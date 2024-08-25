@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 const userscherma = new mongoose.Schema(
   {
+    userId:{
+      type: String,
+    },
     role: {
       type: String,
       required: true,
@@ -9,18 +12,15 @@ const userscherma = new mongoose.Schema(
       type: String,
       required: true,
     },
-    email_address: {
-      type: String,
-      required: true,
-    },
-    loginattempt: {
-      type: Number,
-      default: 0,
-    },
     password: {
       type: String,
       required: true,
-    }
+    },
+    hasChangedPassword: 
+    { 
+      type: Boolean, 
+      default: false 
+    },
   },
   {
     timestamps: {

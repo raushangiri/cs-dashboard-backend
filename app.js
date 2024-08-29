@@ -1,4 +1,5 @@
 const { config } = require("dotenv");
+const punycode = require('punycode/');
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
@@ -10,7 +11,11 @@ const numCPUs = require("node:os").availableParallelism();
 const process = require("node:process");
 const router = require("./src/api/route/routes");
 require("dotenv").config();
+
+
+
 const port = process.env.port;
+
 let cpuCount = os.cpus().length;
 const email_link = process.env.verified_uri;
 const { connectDB, disconnectDB } = require("./src/db/connection");

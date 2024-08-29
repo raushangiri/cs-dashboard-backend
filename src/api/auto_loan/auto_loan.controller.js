@@ -13,7 +13,7 @@ const createAutoLoanApplication = async (req, res) => {
       official_email_id,
       interested,
       reason_of_not_intrested,
-      // other fields...
+      // other fields....
     } = req.body;
 
     // Check mandatory fields

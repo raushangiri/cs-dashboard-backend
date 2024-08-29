@@ -139,7 +139,7 @@ const login = async (req, res) => {
     const userdata = await user.findOne({ userId });
 
     if (!user) {
-      return res.status(400).send({ message: "Invalid userId or password" });
+      return res.status(400).send({ message: "Invalid userId" });
     }
 
     const isMatch = await bcrypt.compare(password, userdata.password);
@@ -148,7 +148,6 @@ const login = async (req, res) => {
       return res.status(400).send({ message: "Invalid userId or password" });
     }
 
-    // Check if the user needs to change their password
     if (!userdata.hasChangedPassword) {
       return res.status(200).send({
         message: "Password change required",
@@ -156,8 +155,7 @@ const login = async (req, res) => {
         status: 200,
       });
     }
-
-    // Normal login flow
+   
     const token = jwt.sign({ userId: user.userId }, "yourSecretKey", {
       expiresIn: "1h",
     });
@@ -171,6 +169,7 @@ const login = async (req, res) => {
     return res.status(500).send({ message: error.message, status: 500 });
   }
 };
+
 
 const changePassword = async (req, res) => {
   try {

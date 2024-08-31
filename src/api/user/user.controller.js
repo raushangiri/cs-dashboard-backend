@@ -32,44 +32,48 @@ var privateKEY = `${process.env.private_key}`;
 // const config = require("../../src/config/config")
 
 const createuser1 = async (req, res) => {
-  console.log("api called");
   try {
-    const { role, name } = req.body;
-
+    const { role, name, department, reportingTo } = req.body;
     if (!role || !name) {
       return res.status(400).json({ message: "Role and name are required", status: 400 });
     }
-
-    // Generate a unique 4-digit user ID
+    if (role === 'team_leader' && !department) {
+      return res.status(400).json({ message: "Department is required for team leaders", status: 400 });
+    }
+    if (role !== 'admin' && role !== 'team_leader') {
+      if (!department || !reportingTo) {
+        return res.status(400).json({ message: "Department and reportingTo are required for roles other than admin and team leader", status: 400 });
+      }
+    }
     let userId;
     let userExists;
     do {
-      userId = Math.floor(1000 + Math.random() * 9000); // Generate a 4-digit number
+      userId = Math.floor(1000 + Math.random() * 9000); 
       userExists = await user.findOne({ userId: userId.toString() });
     } while (userExists);
-
-    // The initial password is the same as the user ID
     const initialPassword = userId.toString();
-
-    // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(initialPassword, salt);
-
-    // Create the user
-    const newUser = await user.create({
+    const userData = {
       userId: userId.toString(),
       role,
       name,
       password: hashedPassword,
-      hasChangedPassword: false, // Flag to indicate that the user has not changed their password yet
-    });
-
+      hasChangedPassword: false, 
+    };
+    if (role === 'team_leader' || role !== 'admin') {
+      userData.department = Array.isArray(department) ? department : [department]; 
+    }
+    if (role !== 'admin' && role !== 'team_leader') {
+      userData.reportingTo = reportingTo;
+    }
+    const newUser = await user.create(userData);
     return res.status(201).json({
       message: "User created successfully",
-      Data:{
+      Data: {
         UserId: newUser.userId,
         TemporaryPassword: initialPassword,
-      }, // This should be used for the first-time login
+      }, 
       status: 201,
     });
   } catch (error) {
@@ -138,7 +142,7 @@ const login = async (req, res) => {
     const { userId, password } = req.body;
     const userdata = await user.findOne({ userId });
 
-    if (!user) {
+    if (!userdata) { // Should check for `userdata` instead of `user`
       return res.status(400).send({ message: "Invalid userId" });
     }
 
@@ -151,14 +155,16 @@ const login = async (req, res) => {
     if (!userdata.hasChangedPassword) {
       return res.status(200).send({
         message: "Password change required",
-        userId: user.userId,
+        userId: userdata.userId, // Corrected to `userdata.userId`
         status: 200,
       });
     }
-   
-    const token = jwt.sign({ userId: user.userId }, "yourSecretKey", {
-      expiresIn: "1h",
-    });
+
+    const token = jwt.sign(
+      { userId: userdata.userId, role: userdata.role }, // Corrected to `userdata`
+      "yourSecretKey",
+      { expiresIn: "1h" }
+    );
 
     return res.status(200).send({
       message: "Login successful",
@@ -169,6 +175,7 @@ const login = async (req, res) => {
     return res.status(500).send({ message: error.message, status: 500 });
   }
 };
+
 
 
 const changePassword = async (req, res) => {

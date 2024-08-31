@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
-const userscherma = new mongoose.Schema(
+
+const userschema = new mongoose.Schema(
   {
-    userId:{
+    userId: {
       type: String,
     },
     role: {
@@ -12,14 +13,21 @@ const userscherma = new mongoose.Schema(
       type: String,
       required: true,
     },
+    reportingTo: {
+      type: String,
+      default: null, // Default to null if not provided
+    },
+    department: {
+      type: [String], // Store department as an array of strings to handle multiple departments
+      default: [], // Default to an empty array if not provided
+    },
     password: {
       type: String,
       required: true,
     },
-    hasChangedPassword: 
-    { 
-      type: Boolean, 
-      default: false 
+    hasChangedPassword: {
+      type: Boolean,
+      default: false,
     },
   },
   {
@@ -29,5 +37,6 @@ const userscherma = new mongoose.Schema(
     },
   }
 );
-const user = mongoose.model("user", userscherma);
+
+const user = mongoose.model("user", userschema);
 module.exports = user;

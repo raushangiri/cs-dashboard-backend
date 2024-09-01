@@ -32,48 +32,60 @@ var privateKEY = `${process.env.private_key}`;
 // const config = require("../../src/config/config")
 
 const createuser1 = async (req, res) => {
+  console.log("api called")
   try {
     const { role, name, department, reportingTo } = req.body;
+
+    console.log(req.body,"req.body")
     if (!role || !name) {
       return res.status(400).json({ message: "Role and name are required", status: 400 });
     }
+
     if (role === 'team_leader' && !department) {
       return res.status(400).json({ message: "Department is required for team leaders", status: 400 });
     }
+
     if (role !== 'admin' && role !== 'team_leader') {
       if (!department || !reportingTo) {
         return res.status(400).json({ message: "Department and reportingTo are required for roles other than admin and team leader", status: 400 });
       }
     }
+
     let userId;
     let userExists;
     do {
-      userId = Math.floor(1000 + Math.random() * 9000); 
+      userId = Math.floor(1000 + Math.random() * 9000);
       userExists = await user.findOne({ userId: userId.toString() });
     } while (userExists);
+
     const initialPassword = userId.toString();
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(initialPassword, salt);
+
     const userData = {
       userId: userId.toString(),
       role,
       name,
       password: hashedPassword,
-      hasChangedPassword: false, 
+      hasChangedPassword: false,
     };
+
     if (role === 'team_leader' || role !== 'admin') {
-      userData.department = Array.isArray(department) ? department : [department]; 
+      userData.department = Array.isArray(department) ? department : [department];
     }
+
     if (role !== 'admin' && role !== 'team_leader') {
       userData.reportingTo = reportingTo;
     }
+
     const newUser = await user.create(userData);
+
     return res.status(201).json({
       message: "User created successfully",
       Data: {
         UserId: newUser.userId,
         TemporaryPassword: initialPassword,
-      }, 
+      },
       status: 201,
     });
   } catch (error) {
@@ -81,6 +93,7 @@ const createuser1 = async (req, res) => {
     return res.status(500).json({ message: error.message, status: 500 });
   }
 };
+
 
 const deleteUser = async (req, res) => {
   try {
@@ -177,7 +190,6 @@ const login = async (req, res) => {
 };
 
 
-
 const changePassword = async (req, res) => {
   try {
     const { userId, newPassword } = req.body;
@@ -233,11 +245,44 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const findteamleader = async (req, res) => {
+  try {
+    const teamLeaders = await user.find({ role: 'team_leader' }, 'name');
+
+    // Check if no team leaders were found
+    if (teamLeaders.length === 0) {
+      return res.status(201).send({
+        message: "There is no Team Leader",
+        status: 201,
+      });
+    }
+
+    // Extract the names of the team leaders
+    const Teamleaderslist = teamLeaders.map(user => user.name);
+
+    // Return the names in the response
+    return res.status(200).send({
+      status: 200,
+      Teamleaderslist,
+    });
+  } catch (error) {
+    console.error('Error finding team leaders:', error);
+    return res.status(500).send({
+      message: "Error finding team leaders",
+      status: 500,
+      error: error.message,
+    });
+  }
+};
+
+
+
 module.exports = {
   createuser1,
   login,
   changePassword,
   resetPassword,
   getalluser,
-  deleteUser
+  deleteUser,
+  findteamleader
 };

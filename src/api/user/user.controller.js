@@ -133,7 +133,7 @@ const deleteUser = async (req, res) => {
 const getalluser = async (req, res) => {
   try {
     // Fetch all users from the User collection, including only the userId, name, and role fields
-    const users = await user.find().select('userId name role');
+    const users = await user.find().select('userId name role reportingTo department');
 
     // Alternatively, you can manually transform each user document to include only the desired fields
     // const users = await User.find();

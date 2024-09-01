@@ -1,91 +1,413 @@
-const auto_loan_file1 = require("../../model/auto_loan_file.model");
-
-const createAutoLoanApplication = async (req, res) => {
+const auto_loan_file = require("../../model/auto_loan_file.model");
+const uploadDatamodel = require("../../model/uploadData.model");
+const processAndSaveAutoLoanApplication = async (data) => {
   try {
     const {
-      type_of_loan,
-      loan_category,
-      required_amount,
+      customerName,
+      customerNumber,
+      productName,
+      permanentAddress,
+      location,
+      companyName,
+      salary,
+      selfEmployee,
+      companyNumber,
+      companyAddress,
+      emailId,
+      bankName,
+      tenure,
+      loanAmount,
+      carName,
+      model,
+      carNumber,
+      insurance,
       name,
-      date_of_birth,
-      mobile_number,
-      personal_email_id,
-      official_email_id,
+      dateOfBirth,
+      mobileNumber,
+      alternateNumber,
+      motherName,
+      fatherName,
+      maritalStatus,
+      spouseName,
+      currentAddress,
+      permanentAddressLandmark,
+      typeOfResident,
+      totalNumberAtCurrentResidence,
+      totalTimeInDelhi,
+      officialEmailId,
+      personalEmailId,
+      occupationType,
+      natureOfBusiness,
+      serviceType,
+      officeName,
+      officeAddress,
+      officeAddressLandmark,
+      noOfYearsAtCurrentOrganization,
+      gstItrFiled,
+      gstAndItrIncome,
+      inHandSalary,
+      otherIncome,
+      references,
+      photoDocument,
+      panCardDocument,
+      aadhaarCardDocument,
+      rcDocument,
+      insuranceDocument,
+      loanTrackDocument,
+      latestSixMonthsEmiDebitBankingReqdDocument,
+      incomeDocs,
+      eBillDocument,
+      rentAgreementWithOwnerEbill,
       interested,
-      reason_of_not_intrested,
-      // other fields....
-    } = req.body;
+      reasonOfNotInterested,
+      tvrStatus = "pending",
+      cdrStatus = "pending",
+      bankLogin = "pending",
+      disbursal = "pending",
+      eligibleAmount
+    } = data;
 
     // Check mandatory fields
-    if (!name || !mobile_number || !personal_email_id || !official_email_id || !type_of_loan || !loan_category) {
-      return res.status(400).json({ message: "Mandatory fields are missing" });
+    if (!name || !mobileNumber || !personalEmailId || !officialEmailId || !loanAmount || !tenure) {
+      throw new Error("Mandatory fields are missing");
     }
 
     // Conditional validation for interested field
-    if (interested === "No" && !reason_of_not_intrested) {
-      return res.status(400).json({ message: "Reason for not being interested is required when 'interested' is 'No'" });
+    if (interested === "No" && !reasonOfNotInterested) {
+      throw new Error("Reason for not being interested is required when 'interested' is 'No'");
     }
 
     // Create new auto loan application
-    const newApplication = new auto_loan_file1({
-      type_of_loan,
-      loan_category,
-      required_amount,
+    const newApplication = new auto_loan_file({
+      customerName,
+      customerNumber,
+      productName,
+      permanentAddress,
+      location,
+      companyName,
+      salary,
+      selfEmployee,
+      companyNumber,
+      companyAddress,
+      emailId,
+      bankName,
+      tenure,
+      loanAmount,
+      carName,
+      model,
+      carNumber,
+      insurance,
       name,
-      date_of_birth,
-      mobile_number,
-      alternate_number: req.body.alternate_number,
-      mother_name: req.body.mother_name,
-      father_name: req.body.father_name,
-      marital_status: req.body.marital_status,
-      spouse_name: req.body.spouse_name,
-      current_address: req.body.current_address,
-      permanent_address: req.body.permanent_address,
-      permanent_address_landmark: req.body.permanent_address_landmark,
-      type_of_resident: req.body.type_of_resident,
-      total_number_at_current_residence: req.body.total_number_at_current_residence,
-      total_time_in_delhi: req.body.total_time_in_delhi,
-      official_email_id,
-      personal_email_id,
-      office_name: req.body.office_name,
-      nature_of_business: req.body.nature_of_business,
-      occupation_type: req.body.occupation_type,
-      office_address: req.body.office_address,
-      office_address_landmark: req.body.office_address_landmark,
-      no_of_years_at_current_organization: req.body.no_of_years_at_current_organization,
-      gst_itr_filed: req.body.gst_itr_filed,
-      gst_and_itr_income: req.body.gst_and_itr_income,
-      service_type: req.body.service_type,
-      in_hand_salary: req.body.in_hand_salary,
-      other_income: req.body.other_income,
-      references: req.body.references,
-      photo_document: req.body.photo_document,
-      pan_card_document: req.body.pan_card_document,
-      aadhaar_card_document: req.body.aadhaar_card_document,
-      rc_document: req.body.rc_document,
-      insurance_document: req.body.insurance_document,
-      loan_track_document: req.body.loan_track_document,
-      latest_six_months_emi_debit_banking_reqd_document: req.body.latest_six_months_emi_debit_banking_reqd_document,
-      income_docs: req.body.income_docs,
-      e_bill_document: req.body.e_bill_document,
-      rent_agreement_with_owner_ebill: req.body.rent_agreement_with_owner_ebill,
+      dateOfBirth,
+      mobileNumber,
+      alternateNumber,
+      motherName,
+      fatherName,
+      maritalStatus,
+      spouseName,
+      currentAddress,
+      permanentAddressLandmark,
+      typeOfResident,
+      totalNumberAtCurrentResidence,
+      totalTimeInDelhi,
+      officialEmailId,
+      personalEmailId,
+      occupationType,
+      natureOfBusiness,
+      serviceType,
+      officeName,
+      officeAddress,
+      officeAddressLandmark,
+      noOfYearsAtCurrentOrganization,
+      gstItrFiled,
+      gstAndItrIncome,
+      inHandSalary,
+      otherIncome,
+      references,
+      photoDocument,
+      panCardDocument,
+      aadhaarCardDocument,
+      rcDocument,
+      insuranceDocument,
+      loanTrackDocument,
+      latestSixMonthsEmiDebitBankingReqdDocument,
+      incomeDocs,
+      eBillDocument,
+      rentAgreementWithOwnerEbill,
       interested,
-      reason_of_not_intrested,
-      tvr_status: req.body.tvr_status || "pending",
-      cdr_status: req.body.cdr_status || "pending",
-      bank_login: req.body.bank_login || "pending",
-      disbursal: req.body.disbursal || "pending",
-      eligible_amount: req.body.eligible_amount,
+      reasonOfNotInterested,
+      tvrStatus,
+      cdrStatus,
+      bankLogin,
+      disbursal,
+      eligibleAmount
     });
 
     // Save the application
     await newApplication.save();
-    res.status(201).json({ message: "Auto loan application submitted successfully", application: newApplication });
+    return { status: 201, message: "Auto loan application submitted successfully", application: newApplication };
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    throw new Error(`Server error: ${error.message}`);
+  }
+};
+
+const createAutoLoanApplication = async (req, res) => {
+  try {
+    const result = await processAndSaveAutoLoanApplication(req.body);
+    res.status(result.status).json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+// const createAutoLoanApplication = async (req, res) => {
+//   try {
+//     // Destructure fields from request body
+//     const {
+//       customerName,
+//       customerNumber,
+//       productName,
+//       permanentAddress,
+//       location,
+//       companyName,
+//       salary,
+//       selfEmployee,
+//       companyNumber,
+//       companyAddress,
+//       emailId,
+//       bankName,
+//       tenure,
+//       loanAmount,
+//       carName,
+//       model,
+//       carNumber,
+//       insurance,
+//       name,
+//       dateOfBirth,
+//       mobileNumber,
+//       alternateNumber,
+//       motherName,
+//       fatherName,
+//       maritalStatus,
+//       spouseName,
+//       currentAddress,
+//       permanentAddressLandmark,
+//       typeOfResident,
+//       totalNumberAtCurrentResidence,
+//       totalTimeInDelhi,
+//       officialEmailId,
+//       personalEmailId,
+//       occupationType,
+//       natureOfBusiness,
+//       serviceType,
+//       officeName,
+//       officeAddress,
+//       officeAddressLandmark,
+//       noOfYearsAtCurrentOrganization,
+//       gstItrFiled,
+//       gstAndItrIncome,
+//       inHandSalary,
+//       otherIncome,
+//       references,
+//       photoDocument,
+//       panCardDocument,
+//       aadhaarCardDocument,
+//       rcDocument,
+//       insuranceDocument,
+//       loanTrackDocument,
+//       latestSixMonthsEmiDebitBankingReqdDocument,
+//       incomeDocs,
+//       eBillDocument,
+//       rentAgreementWithOwnerEbill,
+//       interested,
+//       reasonOfNotInterested,
+//       tvrStatus = "pending",
+//       cdrStatus = "pending",
+//       bankLogin = "pending",
+//       disbursal = "pending",
+//       eligibleAmount
+//     } = req.body;
+
+//     // Check mandatory fields
+//     if (!name || !mobileNumber || !personalEmailId || !officialEmailId || !loanAmount || !tenure) {
+//       return res.status(400).json({ message: "Mandatory fields are missing" });
+//     }
+
+//     // Conditional validation for interested field
+//     if (interested === "No" && !reasonOfNotInterested) {
+//       return res.status(400).json({ message: "Reason for not being interested is required when 'interested' is 'No'" });
+//     }
+
+//     // Create new auto loan application
+//     const newApplication = new auto_loan_file1({
+//       customerName,
+//       customerNumber,
+//       productName,
+//       permanentAddress,
+//       location,
+//       companyName,
+//       salary,
+//       selfEmployee,
+//       companyNumber,
+//       companyAddress,
+//       emailId,
+//       bankName,
+//       tenure,
+//       loanAmount,
+//       carName,
+//       model,
+//       carNumber,
+//       insurance,
+//       name,
+//       dateOfBirth,
+//       mobileNumber,
+//       alternateNumber,
+//       motherName,
+//       fatherName,
+//       maritalStatus,
+//       spouseName,
+//       currentAddress,
+//       permanentAddressLandmark,
+//       typeOfResident,
+//       totalNumberAtCurrentResidence,
+//       totalTimeInDelhi,
+//       officialEmailId,
+//       personalEmailId,
+//       occupationType,
+//       natureOfBusiness,
+//       serviceType,
+//       officeName,
+//       officeAddress,
+//       officeAddressLandmark,
+//       noOfYearsAtCurrentOrganization,
+//       gstItrFiled,
+//       gstAndItrIncome,
+//       inHandSalary,
+//       otherIncome,
+//       references,
+//       photoDocument,
+//       panCardDocument,
+//       aadhaarCardDocument,
+//       rcDocument,
+//       insuranceDocument,
+//       loanTrackDocument,
+//       latestSixMonthsEmiDebitBankingReqdDocument,
+//       incomeDocs,
+//       eBillDocument,
+//       rentAgreementWithOwnerEbill,
+//       interested,
+//       reasonOfNotInterested,
+//       tvrStatus,
+//       cdrStatus,
+//       bankLogin,
+//       disbursal,
+//       eligibleAmount
+//     });
+
+//     // Save the application
+//     await newApplication.save();
+//     res.status(201).json({ message: "Auto loan application submitted successfully", application: newApplication });
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
+const uploadData = async (req, res) => {
+  try {
+    const data = req.body;
+
+    // Validate and transform data if needed
+    const transformedData = data.map((item) => ({
+      customerName: item["Customer Name"],
+      customerNumber: item["Customer Number"],
+      productName: item["Product Name"],
+      permanentAddress: item["Permanent address"],
+      location: item["Location"],
+      companyName: item["Company Name"],
+      salary: item["Salary"],
+      selfEmployee: item["Self Employee"],
+      companyNumber: item["Company Number"],
+      companyAddress: item["Company Address"],
+      emailId: item["Email Id"],
+      bankName: item["Bank Name"],
+      tenure: item["tenure"],
+      loanAmount: item["Loan Amount"],
+      carName: item["Car Name"],
+      model: item["Modal"],
+      carNumber: item["Car Number"],
+      insurance: item["Insurance"],
+      // Ensure fields are included in the transformed data if necessary
+    }));
+
+    // Insert many documents to the database
+    await auto_loan_file.insertMany(transformedData);
+    res.status(200).json({ message: 'Data stored successfully!' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to store data.' });
+  }
+};
+
+
+// const uploadData= async (req, res) => {
+//   try {
+//     const data = req.body;
+
+//     // Validate and transform data if needed
+//     const transformedData = data.map((item) => ({
+//       customerName: item["Customer Name"],
+//       customerNumber: item["Customer Number"],
+//       productName: item["Product Name"],
+//       permanentAddress: item["Permanent address"],
+//       location: item["Location"],
+//       companyName: item["Company Name"],
+//       salary: item["Salary"],
+//       selfEmployee: item["Self Employee"],
+//       companyNumber: item["Company Number"],
+//       companyAddress: item["Company Address"],
+//       emailId: item["Email Id"],
+//       bankName: item["Bank Name"],
+//       tenure: item["tenure"],
+//       loanAmount: item["Loan Amount"],
+//       carName: item["Car Name"],
+//       model: item["Modal"],
+//       carNumber: item["Car Number"],
+//       insurance: item["Insurance"],
+//     }));
+
+//     // Save to database
+//     await uploadDatamodel.insertMany(transformedData);
+//     res.status(200).json({ message: 'Data stored successfully!' });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Failed to store data.' });
+//   }
+// };
+
+const getfiledata= async (req, res) => {
+  const { customerNumber } = req.query;
+console.log(customerNumber)
+  if (!customerNumber) {
+    return res.status(400).json({ message: 'Customer number is required.' });
+  }
+
+  try {
+    const customerDetails = await auto_loan_file.findOne({ customerNumber });
+
+    if (!customerDetails) {
+      return res.status(404).json({ message: 'Customer not found.' });
+    }
+
+    res.status(200).json(customerDetails);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to retrieve customer details.' });
   }
 };
 
 module.exports = {
   createAutoLoanApplication,
+  uploadData,
+  getfiledata
 };

@@ -191,53 +191,36 @@ const login = async (req, res) => {
 
 
 const changePassword = async (req, res) => {
+  console.log("API called")
   try {
-    const { userId, newPassword } = req.body;
-    const userdata = await user.findOne({ userId });
-
-    if (!userdata) {
-      return res.status(400).send({ message: "User not found", status: 400 });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    userdata.password = hashedPassword;
-    userdata.hasChangedPassword = true;  // Mark as password changed
-    await userdata.save();
-
-    return res.status(200).send({
-      message: "Password updated successfully",
-      status: 200,
-    });
-  } catch (error) {
-    return res.status(500).send({ message: error.message, status: 500 });
-  }
-};
-
-const resetPassword = async (req, res) => {
-  try {
-    const { userId } = req.body;
+    const { userId, password, newPassword } = req.body;
 
     // Find the user by userId
     const userdata = await user.findOne({ userId });
-
+console.log(userdata,"2954")
     if (!userdata) {
       return res.status(400).send({ message: "User not found", status: 400 });
     }
 
-    // Reset the password to the userId
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(userId, salt);
+    // Compare the provided current password with the stored password
+    const isMatch = await bcrypt.compare(password, userdata.password);
+    if (!isMatch) {
+      return res.status(400).send({ message: "Current password is incorrect", status: 400 });
+    }
 
-    userdata.password = hashedPassword;
-    userdata.hasChangedPassword = false; // Reset the password change status
+    // Generate a new hashed password
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update the user's password
+    userdata.password = hashedNewPassword;
+    userdata.hasChangedPassword = true;  // Mark as password changed
 
     // Save the updated user data
     await userdata.save();
 
     return res.status(200).send({
-      message: "Password reset successfully",
+      message: "Password updated successfully",
       status: 200,
     });
   } catch (error) {
@@ -281,7 +264,7 @@ module.exports = {
   createuser1,
   login,
   changePassword,
-  resetPassword,
+  // resetPassword,
   getalluser,
   deleteUser,
   findteamleader

@@ -334,6 +334,7 @@ const uploadData = async (req, res) => {
       tenure: item["tenure"],
       loanAmount: item["Loan Amount"],
       carName: item["Car Name"],
+      carDetails: item["Car Details"],
       model: item["Modal"],
       carNumber: item["Car Number"],
       insurance: item["Insurance"],
@@ -387,7 +388,7 @@ const uploadData = async (req, res) => {
 
 const getfiledata= async (req, res) => {
   const { customerNumber } = req.query;
-console.log(customerNumber)
+// console.log(customerNumber)
   if (!customerNumber) {
     return res.status(400).json({ message: 'Customer number is required.' });
   }

@@ -5,7 +5,7 @@ const {
   createuser1,
   login,
   changePassword,
-  resetPassword,
+  // resetPassword,
   getalluser,
   deleteUser,
   findteamleader
@@ -15,7 +15,7 @@ const auth = require("../../middlewares/auth");
 router.post("/register", createuser1);
 router.post("/login", login);
 router.post("/changePassword", changePassword);
-router.post("/resetPassword", resetPassword);
+// router.post("/resetPassword", resetPassword);
 router.get("/getalluser",getalluser);
 router.delete("/deleteUser",deleteUser);
 router.get("/findteamleader",findteamleader);

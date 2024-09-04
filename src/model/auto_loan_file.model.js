@@ -433,12 +433,6 @@ const auto_loan_schema = new Schema({
   customerNumber: {
     type: String,
     trim: true,
-    // validate: {
-    //   validator: function (v) {
-    //     return /^\d{10}$/.test(v);
-    //   },
-    //   message: props => `${props.value} is not a valid 10-digit number!`,
-    // },
     default: "",
   },
   name: {
@@ -447,42 +441,16 @@ const auto_loan_schema = new Schema({
     maxlength: 100,
     default: "",
   },
-  // mobileNumber: {
-  //   type: String,
-  //   trim: true,
-  //   validate: {
-  //     validator: function (v) {
-  //       return /^\d{10}$/.test(v);
-  //     },
-  //     message: props => `${props.value} is not a valid 10-digit mobile number!`,
-  //   },
-  //   default: "",
-  // },
   alternateNumber: {
     type: String,
-    // validate: {
-    //   validator: function (v) {
-    //     return v ? /^\d{10}$/.test(v) : true;
-    //   },
-    //   message: props => `${props.value} is not a valid 10-digit alternate number!`,
-    // },
     default: "",
   },
   dateOfBirth: {
     type: Date,
-    // validate: {
-    //   validator: function (v) {
-    //     const ageDifMs = Date.now() - v.getTime();
-    //     const ageDate = new Date(ageDifMs);
-    //     return Math.abs(ageDate.getUTCFullYear() - 1970) >= 18;
-    //   },
-    //   message: 'Applicant must be at least 18 years old.',
-    // },
     default: null,
   },
   maritalStatus: {
     type: String,
-    // enum: ['Single', 'Married', 'Other'],
     default: null,
   },
   spouseName: {
@@ -537,7 +505,6 @@ const auto_loan_schema = new Schema({
   },
   typeOfResident: {
     type: String,
-    // enum: ['Rented', 'Owned', 'Other'],
     default: null,
   },
   officeAddress: {
@@ -556,8 +523,8 @@ const auto_loan_schema = new Schema({
   // Employment Information
   companyName: {
     type: String,
-    trim: true,
-    maxlength: 100,
+    // trim: true,
+    // maxlength: 100,
     default: "",
   },
   salary: {
@@ -567,19 +534,18 @@ const auto_loan_schema = new Schema({
   },
   selfEmployee: {
     type: String,
-    // enum: ['Yes', 'No'],
     default: null,
   },
   companyNumber: {
     type: String,
-    trim: true,
-    validate: {
-      validator: function (v) {
-        return /^\d{10}$/.test(v);
-      },
-      message: props => `${props.value} is not a valid 10-digit company number!`,
-    },
-    default: null,
+    // trim: true,
+    // validate: {
+    //   validator: function (v) {
+    //     return /^\d{10}$/.test(v);
+    //   },
+    //   message: props => `${props.value} is not a valid 10-digit company number!`,
+    // },
+    default: "",
   },
   companyAddress: {
     type: String,
@@ -589,59 +555,14 @@ const auto_loan_schema = new Schema({
   },
   occupationType: {
     type: String,
-    // enum: [
-    //   'Salaried Employee',
-    //   'Self-Employed',
-    //   'Business Owner',
-    //   'Freelancer',
-    //   'Government Employee',
-    //   'Retired',
-    //   'Student',
-    //   'Housewife/Homemaker',
-    //   'Agriculture/Farmer',
-    //   'Consultant',
-    //   'Other',
-    // ],
     default: null,
   },
   natureOfBusiness: {
     type: String,
-    // enum: [
-    //   'Manufacturing',
-    //   'Trading',
-    //   'Retail',
-    //   'Wholesale',
-    //   'Information Technology',
-    //   'Finance and Banking',
-    //   'Real Estate and Construction',
-    //   'Hospitality',
-    //   'Healthcare',
-    //   'Education and Training',
-    //   'Transportation and Logistics',
-    //   'Agriculture and Farming',
-    //   'Import/Export',
-    //   'Media and Entertainment',
-    //   'Other',
-    // ],
     default: null,
   },
   serviceType: {
     type: String,
-    // enum: [
-    //   'IT Services',
-    //   'Financial Services',
-    //   'Legal Services',
-    //   'Healthcare Services',
-    //   'Educational Services',
-    //   'Transportation Services',
-    //   'Hospitality Services',
-    //   'Consultancy Services',
-    //   'Retail Services',
-    //   'Utility Services',
-    //   'Maintenance and Repair Services',
-    //   'Marketing and Advertising Services',
-    //   'Other',
-    // ],
     default: null,
   },
   officeName: {
@@ -672,7 +593,6 @@ const auto_loan_schema = new Schema({
   // Financial Information
   gstItrFiled: {
     type: String,
-    // enum: ['Yes', 'No'],
     default: null,
   },
   gstAndItrIncome: {
@@ -696,24 +616,12 @@ const auto_loan_schema = new Schema({
     type: String,
     trim: true,
     lowercase: true,
-    // validate: {
-    //   validator: function (v) {
-    //     return /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/.test(v);
-    //   },
-    //   message: props => `${props.value} is not a valid official email ID!`,
-    // },
     default: " ",
   },
   personalEmailId: {
     type: String,
     trim: true,
     lowercase: true,
-    // validate: {
-    //   validator: function (v) {
-    //     return /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/.test(v);
-    //   },
-    //   message: props => `${props.value} is not a valid personal email ID!`,
-    // },
     default: "",
   },
 
@@ -722,7 +630,57 @@ const auto_loan_schema = new Schema({
     type: [fileDispositionHistorySchema],
     default: [],
   },
+
+  // Additional Information
+  productName:{
+    type: String,
+    default: "",
+  },
+  bankName: {
+    type: String,
+    trim: true,
+    maxlength: 100,
+    default: "",
+  },
+  tenure: {
+    type: Number,
+    default: 0,
+  },
+  loanAmount: {
+    type: Number,
+    min: [0, 'Loan amount cannot be negative'],
+    default: 0,
+  },
+  carName: {
+    type: String,
+    trim: true,
+    maxlength: 100,
+    default: "",
+  },
+  model: {
+    type: String,
+    trim: true,
+    maxlength: 100,
+    default: "",
+  },
+  carNumber: {
+    type: String,
+    trim: true,
+    maxlength: 20,
+    default: "",
+  },
+  carDetails:{
+    type: String,
+    default: ""
+  },
+  insurance: {
+    type: String,
+    trim: true,
+    maxlength: 100,
+    default: "",
+  },
 }, { timestamps: true });
+
 
 // Helper function to limit array size
 function arrayLimit(val) {

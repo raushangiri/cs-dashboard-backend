@@ -39,7 +39,25 @@ const getDocumentList = async (req, res) => {
   }
 };
 
+
+const getBankNames = async (req, res) => {
+  const { Loan_Type } = req.body;
+  try {
+    const Documents = await bank_details.find({ Loan_Type }).select('Bank_Name -_id');
+    if (Documents.length === 0) {
+      return res.status(404).json({ success: false, message: 'No documents found for this Loan_Type' });
+    }
+    const bankNames = [...new Set(Documents.map(doc => doc.Bank_Name))];
+    res.status(200).json({ success: true, bankNames });
+  } catch (error) {
+    console.error('Error fetching bank names:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+
 module.exports = {
     get_rmDetails,
-    getDocumentList
+    getDocumentList,
+    getBankNames
   };

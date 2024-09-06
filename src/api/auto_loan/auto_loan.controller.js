@@ -1,5 +1,10 @@
 const auto_loan_file = require("../../model/auto_loan_file.model");
 const uploadDatamodel = require("../../model/uploadData.model");
+const overview_details = require('../../model/overview.model');  // Your model
+const personal_details_model = require('../../model/personaldetails.model');  // Your model
+
+
+
 const processAndSaveAutoLoanApplication = async (data) => {
   try {
     const {
@@ -313,36 +318,63 @@ const createAutoLoanApplication = async (req, res) => {
 //   }
 // };
 
+const generateFileNumber = async () => {
+  let fileNumber;
+  let exists = true;
+
+  while (exists) {
+    // Generate a 5-digit random number
+    fileNumber = Math.floor(10000 + Math.random() * 90000).toString(); // Ensures a 5-digit number
+
+    // Check if this file number already exists
+    const fileExists = await auto_loan_file.findOne({ file_number: fileNumber });
+    if (!fileExists) {
+      exists = false; // If no file exists with this number, exit the loop
+    }
+  }
+  
+  return fileNumber;
+};
+
 const uploadData = async (req, res) => {
   try {
     const data = req.body;
 
-    // Validate and transform data if needed
-    const transformedData = data.map((item) => ({
-      customerName: item["Customer Name"],
-      customerNumber: item["Customer Number"],
-      productName: item["Product Name"],
-      permanentAddress: item["Permanent address"],
-      location: item["Location"],
-      companyName: item["Company Name"],
-      salary: item["Salary"],
-      selfEmployee: item["Self Employee"],
-      companyNumber: item["Company Number"],
-      companyAddress: item["Company Address"],
-      emailId: item["Email Id"],
-      bankName: item["Bank Name"],
-      tenure: item["tenure"],
-      loanAmount: item["Loan Amount"],
-      carName: item["Car Name"],
-      carDetails: item["Car Details"],
-      model: item["Modal"],
-      carNumber: item["Car Number"],
-      insurance: item["Insurance"],
-      // Ensure fields are included in the transformed data if necessary
+    // Transform and validate data
+    const transformedData = await Promise.all(data.map(async (item) => {
+      // Generate a unique 5-digit file number for each entry
+      const fileNumber = await generateFileNumber();
+
+      return {
+        file_number: fileNumber, // Unique 5-digit file number
+        mobile_number: item["Customer Number"],
+        previous_loan_bank_name: item["Bank Name"],
+        previous_product_model: item["Product Name"],
+        previous_loan_sanction_date: item["Loan Sanction Date"], // Assuming you have this field
+        customer_name: item["Customer Name"],
+        previous_loan_type: item["Loan Type"], // Assuming Loan Type field
+        previous_loan_amount: item["Loan Amount"],
+        previous_loan_insurance_value: item["Insurance"],
+        // Additional fields from your original data
+        permanentAddress: item["Permanent address"],
+        location: item["Location"],
+        companyName: item["Company Name"],
+        salary: item["Salary"],
+        selfEmployee: item["Self Employee"],
+        companyNumber: item["Company Number"],
+        companyAddress: item["Company Address"],
+        emailId: item["Email Id"],
+        tenure: item["tenure"],
+        carName: item["Car Name"],
+        carDetails: item["Car Details"],
+        model: item["Modal"],
+        carNumber: item["Car Number"],
+        // Ensure all necessary fields are included in the transformation
+      };
     }));
 
-    // Insert many documents to the database
-    await auto_loan_file.insertMany(transformedData);
+    // Insert many documents into the database
+    await overview_details.insertMany(transformedData);
     res.status(200).json({ message: 'Data stored successfully!' });
   } catch (error) {
     console.error(error);
@@ -387,14 +419,13 @@ const uploadData = async (req, res) => {
 // };
 
 const getfiledata= async (req, res) => {
-  const { customerNumber } = req.query;
-// console.log(customerNumber)
-  if (!customerNumber) {
+  const { mobile_number } = req.params;
+  if (!mobile_number) {
     return res.status(400).json({ message: 'Customer number is required.' });
   }
 
   try {
-    const customerDetails = await auto_loan_file.findOne({ customerNumber });
+    const customerDetails = await overview_details.findOne({ mobile_number });
 
     if (!customerDetails) {
       return res.status(404).json({ message: 'Customer not found.' });
@@ -407,8 +438,153 @@ const getfiledata= async (req, res) => {
   }
 };
 
+
+
+// API function to create new loan file overview
+const createLoanFileOverview = async (req, res) => {
+  try {
+    // Generate a unique file number
+    const fileNumber = await generateFileNumber();
+
+    // Create new overview entry
+    const newOverview = new overview_details({
+      file_number: fileNumber,
+      mobile_number: req.body.mobile_number,
+      previous_loan_bank_name: req.body.previous_loan_bank_name,
+      previous_product_model: req.body.previous_product_model,
+      previous_loan_sanction_date: req.body.previous_loan_sanction_date,
+      customer_name: req.body.customer_name,
+      previous_loan_type: req.body.previous_loan_type,
+      previous_loan_amount: req.body.previous_loan_amount,
+      previous_loan_insurance_value: req.body.previous_loan_insurance_value,
+    });
+
+    // Save the new loan file overview document to the database
+    await newOverview.save();
+
+    // Send response back to client
+    return res.status(201).json({
+      success: true,
+      message: "Loan file overview created successfully",
+      data: newOverview,
+    });
+  } catch (error) {
+    console.error('Error creating loan file overview:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+};
+
+
+const createpersonadetails= async (req, res) => {
+  const { file_number } = req.params;
+  const {
+    is_interested,
+    type_of_loan,
+    loan_category,
+    required_amount,
+    mobile_number,
+    name,
+    occupation_type,
+    nature_of_business,
+    service_type,
+    type_of_resident,
+    permanent_address,
+    permanent_address_landmark,
+    official_email_id,
+    personal_email_id,
+    office_name,
+    date_of_birth,
+    alternate_number,
+    mother_name,
+    father_name,
+    marital_status,
+    spouse_name,
+    current_address,
+    years_at_current_residence,
+    total_time_in_delhi,
+    office_address,
+    office_address_landmark,
+    years_at_current_organization,
+    gst_itr_filed,
+    gst_and_itr_income,
+    inhand_salary,
+    other_income,
+  } = req.body;
+
+  try {
+    // Create a new personal details document
+    const newPersonalDetails = new personal_details_model({
+      file_number,
+      is_interested,
+      type_of_loan,
+      loan_category,
+      required_amount,
+      mobile_number,
+      name,
+      occupation_type,
+      nature_of_business,
+      service_type,
+      type_of_resident,
+      permanent_address,
+      permanent_address_landmark,
+      official_email_id,
+      personal_email_id,
+      office_name,
+      date_of_birth,
+      alternate_number,
+      mother_name,
+      father_name,
+      marital_status,
+      spouse_name,
+      current_address,
+      years_at_current_residence,
+      total_time_in_delhi,
+      office_address,
+      office_address_landmark,
+      years_at_current_organization,
+      gst_itr_filed,
+      gst_and_itr_income,
+      inhand_salary,
+      other_income,
+    });
+
+    // Save the document to the database
+    await newPersonalDetails.save();
+
+    // Respond with success
+    res.status(201).json({ message: 'Personal details created successfully' });
+  } catch (error) {
+    // Handle any errors
+    res.status(500).json({ message: 'Error creating personal details', error: error.message });
+  }
+};
+
+const getpersonadetails=async (req, res) => {
+  const { file_number } = req.params;
+
+  try {
+    const details = await personal_details_model.findOne({ file_number });
+
+    if (!details) {
+      return res.status(404).json({ message: 'Personal details not found' });
+    }
+
+    res.status(200).json({ data: details });
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving personal details', error: error.message });
+  }
+};
+
+
 module.exports = {
   createAutoLoanApplication,
   uploadData,
-  getfiledata
+  getfiledata,
+  createLoanFileOverview,
+  createpersonadetails,
+  getpersonadetails
 };

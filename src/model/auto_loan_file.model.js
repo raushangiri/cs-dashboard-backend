@@ -378,13 +378,10 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-// File disposition history schema
 const fileDispositionHistorySchema = new Schema({
-  // Define fields for fileDispositionHistorySchema here
 });
 
 const auto_loan_schema = new Schema({
-  // Financial Information
   totalAB: {
     type: Number,
     default: 0,

@@ -3,6 +3,10 @@ const uploadDatamodel = require("../../model/uploadData.model");
 const overview_details = require('../../model/overview.model');  // Your model
 const personal_details_model = require('../../model/personaldetails.model');  // Your model
 const reference_details = require('../../model/Reference.model');  // Your model
+const dispositionModel = require("../../model/desposition.model");
+const user = require("../../model/user.model");
+const mongoose = require('mongoose'); // Ensure mongoose is imported
+const LoandataModel = require("../../model/loandata.model");
 
 
 
@@ -333,7 +337,7 @@ const generateFileNumber = async () => {
       exists = false; // If no file exists with this number, exit the loop
     }
   }
-  
+
   return fileNumber;
 };
 
@@ -419,7 +423,7 @@ const uploadData = async (req, res) => {
 //   }
 // };
 
-const getfiledata= async (req, res) => {
+const getfiledata = async (req, res) => {
   const { mobile_number } = req.params;
   if (!mobile_number) {
     return res.status(400).json({ message: 'Customer number is required.' });
@@ -558,7 +562,7 @@ const createpersonadetails = async (req, res) => {
 
     // Respond with success
     if (updatedPersonalDetails) {
-      res.status(200).json({ message: 'details updated successfully'});
+      res.status(200).json({ message: 'details updated successfully' });
     }
   } catch (error) {
     // Handle any errors
@@ -567,7 +571,7 @@ const createpersonadetails = async (req, res) => {
 };
 
 
-const getpersonadetails=async (req, res) => {
+const getpersonadetails = async (req, res) => {
   const { file_number } = req.params;
 
   try {
@@ -587,50 +591,54 @@ const getpersonadetails=async (req, res) => {
 const createreferencedetail = async (req, res) => {
   const { file_number } = req.params;
   const {
-    
     reference_name,
     reference_mobile_number,
-    occupation_type,
-    nature_of_business,
+    reference_occupation_type,
+    reference_nature_of_business,
     company_name,
     reference_address,
-    
   } = req.body;
 
   try {
-    // Check if a personal details document with the given file_number already exists
-    const updatedReferenceDetails = await reference_details.findOneAndUpdate(
-      { file_number },  // Search criteria
-      {
-        $set: {
-          file_number,
-reference_name,
-reference_mobile_number,
-occupation_type,
-nature_of_business,
-company_name,
-reference_address,
+    // // Check if a reference detail with the given file_number already exists
+    // const existingReferenceDetail = await reference_details.findOne({ file_number });
 
-        }
-      },
-      { new: true, upsert: true }  // Options: new returns the updated document, upsert creates if not found
-    );
+    // if (existingReferenceDetail) {
+    //   return res.status(400).json({
+    //     message: 'Reference detail with this file_number already exists',
+    //   });
+    // }
+
+    // Create a new reference detail
+    const newReferenceDetail = await reference_details.create({
+      file_number,
+      reference_name,
+      reference_mobile_number,
+      reference_occupation_type,
+    reference_nature_of_business,
+      company_name,
+      reference_address,
+    });
 
     // Respond with success
-    if (updatedReferenceDetails) {
-      res.status(200).json({ message: 'reference details updated successfully'});
-    }
+    res.status(201).json({
+      message: 'Reference detail created successfully',
+      data: newReferenceDetail,
+    });
   } catch (error) {
     // Handle any errors
-    res.status(500).json({ message: 'Error saving personal details', error: error.message });
+    res.status(500).json({
+      message: 'Error creating reference detail',
+      error: error.message,
+    });
   }
 };
 
-const getreferencedetail=async (req, res) => {
+const getreferencedetail = async (req, res) => {
   const { file_number } = req.params;
 
   try {
-    const details = await reference_details.findOne({ file_number });
+    const details = await reference_details.find({ file_number });
 
     if (!details) {
       return res.status(404).json({ message: 'reference details not found' });
@@ -643,6 +651,126 @@ const getreferencedetail=async (req, res) => {
 };
 
 
+const createdesposition = async (req, res) => {
+  const { file_number } = req.params;
+  const {
+    call_status,
+    disposition,
+    user_id,
+    expected_to_send_document_by,
+    document_list,
+    remark
+  } = req.body;
+
+  try {
+    // Find the user by user_id
+    // const userObjectId =new mongoose.Types.ObjectId(user_id);
+    const User = await user.findOne({userId:user_id});
+
+    if (!User) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Create a new disposition document with the user's name
+    const newDocument = new dispositionModel({
+      file_number,
+      call_status,
+      disposition,
+      user_id,
+      expected_to_send_document_by,
+      document_list,
+      remark,
+      createdAt: new Date(),  // Set the current time as createdAt
+      user_name: User.name   // Store the user name
+    });
+
+    await newDocument.save();
+
+    res.status(200).json({ message: 'Disposed successfully', data: newDocument });
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving document', error: error.message });
+  }
+};
+
+
+const getdesposition= async (req, res) => {
+  const { file_number } = req.params;
+
+  try {
+    const document = await dispositionModel.find({ file_number });
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    res.status(200).json({ data: document });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching document', error: error.message });
+  }
+};
+
+
+const createLoandetails = async (req, res) => {
+  const { file_number } = req.params;
+
+  try {
+    const {
+      bank_name,
+      emi_amount,
+      loan_term,
+      loan_start_date,
+      loan_end_date,
+      emi_date,
+      no_of_emi_bounces,
+      bounces_reason,
+      car_details
+    } = req.body;
+
+    // Create new loan document
+    const newLoan = new LoandataModel({
+      bank_name,
+      emi_amount,
+      loan_term,
+      loan_start_date,
+      loan_end_date,
+      emi_date,
+      no_of_emi_bounces,
+      bounces_reason,
+      car_details,
+      file_number:file_number
+    });
+
+    // Save the loan entry to the database
+    await newLoan.save();
+    
+    res.status(200).json({ message: 'Loan details added successfully'});
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding loan details', error: error.message });
+  }
+};
+
+// Get all loan details by file number
+const getLoandetails = async (req, res) => {
+  const { file_number } = req.params;
+
+  try {
+    // Find all loan entries by file number
+    const loanDetails = await LoandataModel.find({ file_number });
+
+    if (!loanDetails || loanDetails.length === 0) {
+      return res.status(404).json({ message: 'Loan details not found' });
+    }
+
+    res.status(200).json({ message: 'Loan details retrieved successfully', data: loanDetails });
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving loan details', error: error.message });
+  }
+};
+
+
+
+
+
 module.exports = {
   createAutoLoanApplication,
   uploadData,
@@ -651,5 +779,9 @@ module.exports = {
   createpersonadetails,
   getpersonadetails,
   createreferencedetail,
-  getreferencedetail
+  getreferencedetail,
+  createdesposition,
+  getdesposition,
+  createLoandetails,
+  getLoandetails
 };

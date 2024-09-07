@@ -8,7 +8,11 @@ const {
   createpersonadetails,
   getpersonadetails,
   createreferencedetail,
-  getreferencedetail
+  getreferencedetail,
+  createdesposition,
+  getdesposition,
+  createLoandetails,
+  getLoandetails
 
 } = require("./auto_loan.controller");
 
@@ -20,6 +24,9 @@ router.post("/createpersonaldetails/:file_number", createpersonadetails);
 router.get("/getpersonadetails/:file_number", getpersonadetails);
 router.post("/createreferencedetail/:file_number", createreferencedetail);
 router.get("/getreferencedetail/:file_number", getreferencedetail);
-
+router.post("/createdesposition/:file_number", createdesposition);
+router.get("/getdesposition/:file_number", getdesposition);
+router.post("/createLoandetails/:file_number", createLoandetails);
+router.get("/getLoandetails/:file_number", getLoandetails);
 
 module.exports = router;

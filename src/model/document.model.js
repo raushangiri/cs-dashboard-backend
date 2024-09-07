@@ -1,10 +1,10 @@
 const mongoose = require("mongoose");
 const document_schema = new mongoose.Schema(
   {
-    Type_of_loan: {
+    type_of_loan: {
             type: String,
         },
-        Loan_category: {
+        loan_category: {
             type: String,
         },
         Document: {

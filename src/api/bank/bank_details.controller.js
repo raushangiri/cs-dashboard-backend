@@ -23,13 +23,15 @@ const get_rmDetails = async (req, res) => {
 
 const getDocumentList = async (req, res) => {
   try {
-    const { Type_of_loan, Loan_category } = req.body;
-    if (!Type_of_loan || !Loan_category) {
+    const { type_of_loan,
+      loan_category} = req.body;
+    if (!type_of_loan || !loan_category) {
       return res.status(400).json({ error: 'Type_of_loan and Loan_category are required' });
     }
-    const documentData = await documents.find({ Type_of_loan, Loan_category }).select('Document');
+    const documentData = await documents.find({ type_of_loan,
+      loan_category}).select('Document');
     if (!documentData || documentData.length === 0) {
-      return res.status(404).json({ message: 'Documents not found for the given Type_of_loan and Loan_category' });
+      return res.status(404).json({ message: 'Documents not found' });
     }
     const documentList = documentData.flatMap(doc => doc.Document);
     return res.status(200).json({ documents: documentList });
@@ -55,9 +57,24 @@ const getBankNames = async (req, res) => {
   }
 };
 
+const getlist = async (req, res) => {
+  try {
+    const Documents = await bank_details.find().select('Bank_Name -_id');
+    if (Documents.length === 0) {
+      return res.status(404).json({ success: false, message: 'No documents found for this Loan_Type' });
+    }
+    const bankNames = [...new Set(Documents.map(doc => doc.Bank_Name))];
+    res.status(200).json({ success: true, bankNames });
+  } catch (error) {
+    console.error('Error fetching bank names:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 
 module.exports = {
     get_rmDetails,
     getDocumentList,
-    getBankNames
+    getBankNames,
+    getlist
   };

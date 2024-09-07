@@ -10,10 +10,10 @@ reference_name: {
 reference_mobile_number: {
         type: String,
     },
-occupation_type: {
+    reference_occupation_type: {
         type: String,
     },
-nature_of_business: {
+    reference_nature_of_business: {
         type: String,
     },
 company_name: {

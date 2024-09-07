@@ -2,6 +2,7 @@ const auto_loan_file = require("../../model/auto_loan_file.model");
 const uploadDatamodel = require("../../model/uploadData.model");
 const overview_details = require('../../model/overview.model');  // Your model
 const personal_details_model = require('../../model/personaldetails.model');  // Your model
+const reference_details = require('../../model/Reference.model');  // Your model
 
 
 
@@ -438,8 +439,6 @@ const getfiledata= async (req, res) => {
   }
 };
 
-
-
 // API function to create new loan file overview
 const createLoanFileOverview = async (req, res) => {
   try {
@@ -479,7 +478,7 @@ const createLoanFileOverview = async (req, res) => {
 };
 
 
-const createpersonadetails= async (req, res) => {
+const createpersonadetails = async (req, res) => {
   const { file_number } = req.params;
   const {
     is_interested,
@@ -516,52 +515,57 @@ const createpersonadetails= async (req, res) => {
   } = req.body;
 
   try {
-    // Create a new personal details document
-    const newPersonalDetails = new personal_details_model({
-      file_number,
-      is_interested,
-      type_of_loan,
-      loan_category,
-      required_amount,
-      mobile_number,
-      name,
-      occupation_type,
-      nature_of_business,
-      service_type,
-      type_of_resident,
-      permanent_address,
-      permanent_address_landmark,
-      official_email_id,
-      personal_email_id,
-      office_name,
-      date_of_birth,
-      alternate_number,
-      mother_name,
-      father_name,
-      marital_status,
-      spouse_name,
-      current_address,
-      years_at_current_residence,
-      total_time_in_delhi,
-      office_address,
-      office_address_landmark,
-      years_at_current_organization,
-      gst_itr_filed,
-      gst_and_itr_income,
-      inhand_salary,
-      other_income,
-    });
-
-    // Save the document to the database
-    await newPersonalDetails.save();
+    // Check if a personal details document with the given file_number already exists
+    const updatedPersonalDetails = await personal_details_model.findOneAndUpdate(
+      { file_number },  // Search criteria
+      {
+        $set: {
+          is_interested,
+          type_of_loan,
+          loan_category,
+          required_amount,
+          mobile_number,
+          name,
+          occupation_type,
+          nature_of_business,
+          service_type,
+          type_of_resident,
+          permanent_address,
+          permanent_address_landmark,
+          official_email_id,
+          personal_email_id,
+          office_name,
+          date_of_birth,
+          alternate_number,
+          mother_name,
+          father_name,
+          marital_status,
+          spouse_name,
+          current_address,
+          years_at_current_residence,
+          total_time_in_delhi,
+          office_address,
+          office_address_landmark,
+          years_at_current_organization,
+          gst_itr_filed,
+          gst_and_itr_income,
+          inhand_salary,
+          other_income,
+        }
+      },
+      { new: true, upsert: true }  // Options: new returns the updated document, upsert creates if not found
+    );
 
     // Respond with success
-    res.status(201).json({ message: 'Personal details created successfully' });
+    if (updatedPersonalDetails) {
+      res.status(200).json({ message: 'details updated successfully'});
+    }
   } catch (error) {
     // Handle any errors
-    res.status(500).json({ message: 'Error creating personal details', error: error.message });
+    res.status(500).json({ message: 'Error saving personal details', error: error.message });
   }
 };
+
 
 const getpersonadetails=async (req, res) => {
   const { file_number } = req.params;
@@ -580,11 +584,72 @@ const getpersonadetails=async (req, res) => {
 };
 
 
+const createreferencedetail = async (req, res) => {
+  const { file_number } = req.params;
+  const {
+    
+    reference_name,
+    reference_mobile_number,
+    occupation_type,
+    nature_of_business,
+    company_name,
+    reference_address,
+    
+  } = req.body;
+
+  try {
+    // Check if a personal details document with the given file_number already exists
+    const updatedReferenceDetails = await reference_details.findOneAndUpdate(
+      { file_number },  // Search criteria
+      {
+        $set: {
+          file_number,
+reference_name,
+reference_mobile_number,
+occupation_type,
+nature_of_business,
+company_name,
+reference_address,
+
+        }
+      },
+      { new: true, upsert: true }  // Options: new returns the updated document, upsert creates if not found
+    );
+
+    // Respond with success
+    if (updatedReferenceDetails) {
+      res.status(200).json({ message: 'reference details updated successfully'});
+    }
+  } catch (error) {
+    // Handle any errors
+    res.status(500).json({ message: 'Error saving personal details', error: error.message });
+  }
+};
+
+const getreferencedetail=async (req, res) => {
+  const { file_number } = req.params;
+
+  try {
+    const details = await reference_details.findOne({ file_number });
+
+    if (!details) {
+      return res.status(404).json({ message: 'reference details not found' });
+    }
+
+    res.status(200).json({ data: details });
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving reference details', error: error.message });
+  }
+};
+
+
 module.exports = {
   createAutoLoanApplication,
   uploadData,
   getfiledata,
   createLoanFileOverview,
   createpersonadetails,
-  getpersonadetails
+  getpersonadetails,
+  createreferencedetail,
+  getreferencedetail
 };

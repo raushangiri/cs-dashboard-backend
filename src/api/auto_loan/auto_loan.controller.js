@@ -692,13 +692,10 @@ const createdesposition = async (req, res) => {
   } = req.body;
 
   try {
-    // Find user details by userId
     const userdetails = await user.findOne({ userId });
     if (!userdetails) {
       return res.status(404).json({ message: 'User not found' });
     }
-
-    // Create a new disposition
     const newDisposition = new dispositionmodel({
       userId,
       username: userdetails.name,
@@ -715,20 +712,13 @@ const createdesposition = async (req, res) => {
       file_number
     });
 
-    // Save the new disposition
     await newDisposition.save();
-
-    // Find the loan file based on file_number
     const loanFile = await loanfilemodel.findOne({ file_number });
     if (!loanFile) {
       return res.status(404).json({ message: 'File not found' });
     }
-
-    // Prepare the update object
     let updateData = {};
     let updateNeeded = false;
-
-    // Check role and update only if the agent ID is empty or only contains spaces
     switch (role) {
       case 'sales':
         if (!loanFile.sales_agent_id.trim()) {
@@ -762,14 +752,12 @@ const createdesposition = async (req, res) => {
         return res.status(400).json({ message: 'Invalid role provided' });
     }
 
-    // Only update if there was a need to update
     if (updateNeeded) {
       const updatedFile = await loanfilemodel.findOneAndUpdate(
         { file_number },
         { $set: updateData },
-        { new: true } // Return the updated document
+        { new: true } 
       );
-
       return res.status(201).json({
         message: 'Disposition created and agent ID updated successfully',
         data: { disposition: newDisposition, updatedFile }
@@ -788,33 +776,34 @@ const createdesposition = async (req, res) => {
 
 const getDocumentsCountByUserId = async (req, res) => {
   try {
-    const { userId } = req.params; // Extracting userId from the request parameters
-
-    console.log('Received userId:', userId); // Log the received userId
-
-    // Check if userId is a string, and trim any whitespace
+    const { userId } = req.params; 
     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
-
-    // Count the documents where sales_agent_id matches the given userId
-    const documentCount = await loanfilemodel.countDocuments({ sales_agent_id: sanitizedUserId });
-
-    console.log('Document count:', documentCount); // Log the document count
-
-    // Return the count to the client
+    const loanFileCount = await loanfilemodel.countDocuments({ sales_agent_id: sanitizedUserId });
+    const interestedCount = await dispositionmodel.countDocuments({ 
+      userId: sanitizedUserId,
+      is_interested: 'Interested' 
+    });
+    const notInterestedCount = await dispositionmodel.countDocuments({ 
+      userId: sanitizedUserId,
+      is_interested: 'NotInterested' 
+    });
     res.status(200).json({
       success: true,
-      message: `Total documents found for userId ${sanitizedUserId}: ${documentCount}`,
-      documentCount,
+      message: `Counts fetched for userId ${sanitizedUserId}`,
+      loanFileCount, // Total loan file documents count
+      interestedCount, // Count of Interested
+      notInterestedCount, // Count of Not Interested
     });
   } catch (error) {
-    console.error('Error fetching document count:', error);
+    console.error('Error fetching document counts:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch document count',
+      message: 'Failed to fetch document counts',
       error: error.message,
     });
   }
 };
+
 
 // const createdesposition = async (req, res) => {
 //   // const { file_number } = req.params;
@@ -938,6 +927,31 @@ const getLoandetails = async (req, res) => {
   }
 };
 
+const getLoanFilesByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params; 
+    const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    const loanFiles = await loanfilemodel.find({ sales_agent_id: sanitizedUserId });
+    if (loanFiles.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No loan files found for userId ${sanitizedUserId}`,
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: `Loan files found for userId ${sanitizedUserId}`,
+      loanFiles,
+    });
+  } catch (error) {
+    console.error('Error fetching loan files:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch loan files',
+      error: error.message,
+    });
+  }
+};
 
 
 
@@ -955,5 +969,6 @@ module.exports = {
   getdesposition,
   createLoandetails,
   getLoandetails,
-  getDocumentsCountByUserId
+  getDocumentsCountByUserId,
+  getLoanFilesByUserId
 };

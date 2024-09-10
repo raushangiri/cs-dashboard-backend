@@ -13,7 +13,8 @@ const {
   getdesposition,
   createLoandetails,
   getLoandetails,
-  getDocumentsCountByUserId
+  getDocumentsCountByUserId,
+  getLoanFilesByUserId
 } = require("./auto_loan.controller");
 
 router.post("/createAutoLoanApplication", createAutoLoanApplication);
@@ -29,5 +30,6 @@ router.get("/getdesposition/:file_number", getdesposition);
 router.post("/createLoandetails/:file_number", createLoandetails);
 router.get("/getLoandetails/:file_number", getLoandetails);
 router.get("/getdashboardcount/:userId", getDocumentsCountByUserId);
+router.get("/getLoanFilesByUserId/:userId", getLoanFilesByUserId);
 
 module.exports = router;

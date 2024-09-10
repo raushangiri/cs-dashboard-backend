@@ -3,10 +3,11 @@ const uploadDatamodel = require("../../model/uploadData.model");
 const overview_details = require('../../model/overview.model');  // Your model
 const personal_details_model = require('../../model/personaldetails.model');  // Your model
 const reference_details = require('../../model/Reference.model');  // Your model
-const dispositionModel = require("../../model/desposition.model");
+const dispositionmodel = require("../../model/desposition.model");
 const user = require("../../model/user.model");
 const mongoose = require('mongoose'); // Ensure mongoose is imported
 const LoandataModel = require("../../model/loandata.model");
+const loanfilemodel = require('../../model/loan_file.model'); // Assuming your model is in the same folder
 
 
 
@@ -344,48 +345,73 @@ const generateFileNumber = async () => {
 const uploadData = async (req, res) => {
   try {
     const data = req.body;
+    
+    const batchSize = 100; // Define the batch size (adjustable based on performance)
+    const totalBatches = Math.ceil(data.length / batchSize); // Calculate the total number of batches
 
-    // Transform and validate data
-    const transformedData = await Promise.all(data.map(async (item) => {
-      // Generate a unique 5-digit file number for each entry
-      const fileNumber = await generateFileNumber();
+    // Process data in batches to prevent overloading memory
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const batch = data.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
 
-      return {
-        file_number: fileNumber, // Unique 5-digit file number
-        mobile_number: item["Customer Number"],
-        previous_loan_bank_name: item["Bank Name"],
-        previous_product_model: item["Product Name"],
-        previous_loan_sanction_date: item["Loan Sanction Date"], // Assuming you have this field
-        customer_name: item["Customer Name"],
-        previous_loan_type: item["Loan Type"], // Assuming Loan Type field
-        previous_loan_amount: item["Loan Amount"],
-        previous_loan_insurance_value: item["Insurance"],
-        // Additional fields from your original data
-        permanentAddress: item["Permanent address"],
-        location: item["Location"],
-        companyName: item["Company Name"],
-        salary: item["Salary"],
-        selfEmployee: item["Self Employee"],
-        companyNumber: item["Company Number"],
-        companyAddress: item["Company Address"],
-        emailId: item["Email Id"],
-        tenure: item["tenure"],
-        carName: item["Car Name"],
-        carDetails: item["Car Details"],
-        model: item["Modal"],
-        carNumber: item["Car Number"],
-        // Ensure all necessary fields are included in the transformation
-      };
-    }));
+      // Transform and validate data
+      const transformedData = await Promise.all(batch.map(async (item) => {
+        // Generate a unique 5-digit file number for each entry
+        const fileNumber = await generateFileNumber();
 
-    // Insert many documents into the database
-    await overview_details.insertMany(transformedData);
+        // Insert the transformed data into the first collection
+        const overviewDoc = {
+          file_number: fileNumber,
+          mobile_number: item["Customer Number"],
+          previous_loan_bank_name: item["Bank Name"],
+          previous_product_model: item["Product Name"],
+          previous_loan_sanction_date: item["Loan Sanction Date"],
+          customer_name: item["Customer Name"],
+          previous_loan_type: item["Loan Type"],
+          previous_loan_amount: item["Loan Amount"],
+          previous_loan_insurance_value: item["Insurance"],
+          permanentAddress: item["Permanent address"],
+          location: item["Location"],
+          companyName: item["Company Name"],
+          salary: item["Salary"],
+          selfEmployee: item["Self Employee"],
+          companyNumber: item["Company Number"],
+          companyAddress: item["Company Address"],
+          emailId: item["Email Id"],
+          tenure: item["tenure"],
+          carName: item["Car Name"],
+          carDetails: item["Car Details"],
+          model: item["Modal"],
+          carNumber: item["Car Number"],
+          // Additional fields as needed
+        };
+
+        // Insert into the second collection (loanfilesSchema)
+        const fileStatusDoc = {
+          file_number: fileNumber,
+          customer_name: item["Customer Name"],
+          customer_mobile_number: item["Customer Number"],
+          // Default values for the rest of the fields in loanfilesSchema
+        };
+
+        // Save both documents in parallel
+        await Promise.all([
+          overview_details.create(overviewDoc),
+          loanfilemodel.create(fileStatusDoc),
+        ]);
+
+        return overviewDoc; // Return the overview data (can be omitted if not needed)
+      }));
+
+      console.log(`Batch ${batchIndex + 1} processed successfully`);
+    }
+
     res.status(200).json({ message: 'Data stored successfully!' });
   } catch (error) {
-    console.error(error);
+    console.error('Error in processing data:', error);
     res.status(500).json({ message: 'Failed to store data.' });
   }
 };
+
 
 
 // const uploadData= async (req, res) => {
@@ -650,54 +676,199 @@ const getreferencedetail = async (req, res) => {
   }
 };
 
-
 const createdesposition = async (req, res) => {
-  const { file_number } = req.params;
   const {
+    userId,
+    role,
     call_status,
+    is_interested,
     disposition,
-    user_id,
-    expected_to_send_document_by,
-    document_list,
-    remark
+    selected_documents,
+    expected_document_date,
+    not_interested_reason,
+    remarks,
+    file_status,
+    file_number
   } = req.body;
 
   try {
-    // Find the user by user_id
-    // const userObjectId =new mongoose.Types.ObjectId(user_id);
-    const User = await user.findOne({userId:user_id});
-
-    if (!User) {
+    // Find user details by userId
+    const userdetails = await user.findOne({ userId });
+    if (!userdetails) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Create a new disposition document with the user's name
-    const newDocument = new dispositionModel({
-      file_number,
+    // Create a new disposition
+    const newDisposition = new dispositionmodel({
+      userId,
+      username: userdetails.name,
+      role,
+      department: "test",
       call_status,
+      is_interested,
       disposition,
-      user_id,
-      expected_to_send_document_by,
-      document_list,
-      remark,
-      createdAt: new Date(),  // Set the current time as createdAt
-      user_name: User.name   // Store the user name
+      selected_documents,
+      expected_document_date,
+      not_interested_reason,
+      remarks,
+      file_status,
+      file_number
     });
 
-    await newDocument.save();
+    // Save the new disposition
+    await newDisposition.save();
 
-    res.status(200).json({ message: 'Disposed successfully', data: newDocument });
+    // Find the loan file based on file_number
+    const loanFile = await loanfilemodel.findOne({ file_number });
+    if (!loanFile) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+
+    // Prepare the update object
+    let updateData = {};
+    let updateNeeded = false;
+
+    // Check role and update only if the agent ID is empty or only contains spaces
+    switch (role) {
+      case 'sales':
+        if (!loanFile.sales_agent_id.trim()) {
+          updateData.sales_agent_id = userId;
+          updateData.sales_status = call_status;
+          updateNeeded = true;
+        }
+        break;
+      case 'TVR':
+        if (!loanFile.tvr_agent_id.trim()) {
+          updateData.tvr_agent_id = userId;
+          updateData.tvr_status = call_status;
+          updateNeeded = true;
+        }
+        break;
+      case 'CDR':
+        if (!loanFile.cdr_agent_id.trim()) {
+          updateData.cdr_agent_id = userId;
+          updateData.cdr_status = call_status;
+          updateNeeded = true;
+        }
+        break;
+      case 'BankLogin':
+        if (!loanFile.banklogin_agent_id.trim()) {
+          updateData.banklogin_agent_id = userId;
+          updateData.bank_login_status = call_status;
+          updateNeeded = true;
+        }
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid role provided' });
+    }
+
+    // Only update if there was a need to update
+    if (updateNeeded) {
+      const updatedFile = await loanfilemodel.findOneAndUpdate(
+        { file_number },
+        { $set: updateData },
+        { new: true } // Return the updated document
+      );
+
+      return res.status(201).json({
+        message: 'Disposition created and agent ID updated successfully',
+        data: { disposition: newDisposition, updatedFile }
+      });
+    } else {
+      return res.status(200).json({
+        message: 'Disposition created, but agent ID was not updated as it is already assigned or contains only spaces',
+        data: newDisposition
+      });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Error saving document', error: error.message });
+    console.error('Error creating disposition:', error);
+    return res.status(500).json({ message: 'Internal server error', error });
   }
 };
+
+const getDocumentsCountByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params; // Extracting userId from the request parameters
+
+    console.log('Received userId:', userId); // Log the received userId
+
+    // Check if userId is a string, and trim any whitespace
+    const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
+
+    // Count the documents where sales_agent_id matches the given userId
+    const documentCount = await loanfilemodel.countDocuments({ sales_agent_id: sanitizedUserId });
+
+    console.log('Document count:', documentCount); // Log the document count
+
+    // Return the count to the client
+    res.status(200).json({
+      success: true,
+      message: `Total documents found for userId ${sanitizedUserId}: ${documentCount}`,
+      documentCount,
+    });
+  } catch (error) {
+    console.error('Error fetching document count:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch document count',
+      error: error.message,
+    });
+  }
+};
+
+// const createdesposition = async (req, res) => {
+//   // const { file_number } = req.params;
+//   const {
+//     userId,
+//     role,
+//     call_status,
+//     is_interested,
+//     disposition,
+//     selected_documents,
+//     expected_document_date,
+//     not_interested_reason,
+//     remarks,
+//     file_status,
+//     file_number
+//   } = req.body;
+
+//   const userdetails = await user.findOne({ userId });
+
+
+
+//   try {
+//     // Create a new disposition
+//     const newDisposition = new dispositionmodel({
+//       userId,
+//       username:userdetails.name,
+//       role,
+//       department:"test",
+//       call_status,
+//       is_interested,
+//       disposition,
+//       selected_documents,
+//       expected_document_date,
+//       not_interested_reason,
+//       remarks,
+//       file_status,
+//       file_number
+//     });
+
+//     // Save the new disposition
+//     await newDisposition.save();
+//     return res.status(201).json({ message: 'Disposition created successfully', data: newDisposition });
+//   } catch (error) {
+//     console.error('Error creating disposition:', error);
+//     res.status(500).json({ message: 'Internal server error', error });
+//   }
+// };
 
 
 const getdesposition= async (req, res) => {
   const { file_number } = req.params;
 
   try {
-    const document = await dispositionModel.find({ file_number });
+    const document = await dispositionmodel.find({ file_number });
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
@@ -783,5 +954,6 @@ module.exports = {
   createdesposition,
   getdesposition,
   createLoandetails,
-  getLoandetails
+  getLoandetails,
+  getDocumentsCountByUserId
 };

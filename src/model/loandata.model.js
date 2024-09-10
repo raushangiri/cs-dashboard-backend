@@ -42,7 +42,8 @@ const loanSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-}, { timestamps: true }); // Adding timestamps to keep track of createdAt and updatedAt
+  createdAt: { type: Date, default: Date.now }
+}); // Adding timestamps to keep track of createdAt and updatedAt
 
 // Create the model
 const LoandataModel = mongoose.model('customer_pre_loan', loanSchema);

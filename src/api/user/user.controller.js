@@ -41,11 +41,11 @@ const createuser1 = async (req, res) => {
       return res.status(400).json({ message: "Role and name are required", status: 400 });
     }
 
-    if (role === 'team_leader' && !department) {
+    if (role === 'Team leader' && !department) {
       return res.status(400).json({ message: "Department is required for team leaders", status: 400 });
     }
 
-    if (role !== 'admin' && role !== 'team_leader') {
+    if (role !== 'admin' && role !== 'Team leader') {
       if (!department || !reportingTo) {
         return res.status(400).json({ message: "Department and reportingTo are required for roles other than admin and team leader", status: 400 });
       }
@@ -70,11 +70,11 @@ const createuser1 = async (req, res) => {
       hasChangedPassword: false,
     };
 
-    if (role === 'team_leader' || role !== 'admin') {
+    if (role === 'Team leader' || role !== 'admin') {
       userData.department = Array.isArray(department) ? department : [department];
     }
 
-    if (role !== 'admin' && role !== 'team_leader') {
+    if (role !== 'admin' && role !== 'Team leader') {
       userData.reportingTo = reportingTo;
     }
 

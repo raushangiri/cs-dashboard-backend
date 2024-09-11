@@ -171,7 +171,6 @@ const createAutoLoanApplication = async (req, res) => {
   }
 };
 
-
 // const createAutoLoanApplication = async (req, res) => {
 //   try {
 //     // Destructure fields from request body
@@ -412,8 +411,6 @@ const uploadData = async (req, res) => {
   }
 };
 
-
-
 // const uploadData= async (req, res) => {
 //   try {
 //     const data = req.body;
@@ -507,7 +504,6 @@ const createLoanFileOverview = async (req, res) => {
   }
 };
 
-
 const createpersonadetails = async (req, res) => {
   const { file_number } = req.params;
   const {
@@ -596,7 +592,6 @@ const createpersonadetails = async (req, res) => {
   }
 };
 
-
 const getpersonadetails = async (req, res) => {
   const { file_number } = req.params;
 
@@ -612,7 +607,6 @@ const getpersonadetails = async (req, res) => {
     res.status(500).json({ message: 'Error retrieving personal details', error: error.message });
   }
 };
-
 
 const createreferencedetail = async (req, res) => {
   const { file_number } = req.params;
@@ -808,7 +802,6 @@ const getDocumentsCountByUserId = async (req, res) => {
   }
 };
 
-
 // const createdesposition = async (req, res) => {
 //   // const { file_number } = req.params;
 //   const {
@@ -872,7 +865,6 @@ const getdesposition= async (req, res) => {
     res.status(500).json({ message: 'Error fetching document', error: error.message });
   }
 };
-
 
 const createLoandetails = async (req, res) => {
   const { file_number } = req.params;
@@ -957,6 +949,46 @@ const getLoanFilesByUserId = async (req, res) => {
   }
 };
 
+const admindashboardcount = async (req, res) => {
+  try {
+    // Get the current date and first day of the current month
+    const currentDate = new Date();
+    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
+    // Count total loan files created within the current month
+    const loanFileCount = await loanfilemodel.countDocuments({
+      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+    });
+
+    // Count loan files marked as Interested within the current month
+    const interestedCount = await dispositionmodel.countDocuments({
+      is_interested: 'Interested',
+      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+    });
+
+    // Count dispositions marked as NotInterested within the current month
+    const notInterestedCount = await dispositionmodel.countDocuments({
+      is_interested: 'NotInterested',
+      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Counts fetched for the current month',
+      loanFileCount, // Total loan file documents count within the current month
+      interestedCount, // Count of Interested loan files
+      notInterestedCount // Count of Not Interested dispositions
+    });
+  } catch (error) {
+    console.error('Error fetching document counts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch document counts',
+      error: error.message,
+    });
+  }
+};
+
 
 
 
@@ -974,5 +1006,6 @@ module.exports = {
   createLoandetails,
   getLoandetails,
   getDocumentsCountByUserId,
-  getLoanFilesByUserId
+  getLoanFilesByUserId,
+  admindashboardcount
 };

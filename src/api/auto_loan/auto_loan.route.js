@@ -14,7 +14,8 @@ const {
   createLoandetails,
   getLoandetails,
   getDocumentsCountByUserId,
-  getLoanFilesByUserId
+  getLoanFilesByUserId,
+  admindashboardcount
 } = require("./auto_loan.controller");
 
 router.post("/createAutoLoanApplication", createAutoLoanApplication);
@@ -31,5 +32,6 @@ router.post("/createLoandetails/:file_number", createLoandetails);
 router.get("/getLoandetails/:file_number", getLoandetails);
 router.get("/getdashboardcount/:userId", getDocumentsCountByUserId);
 router.get("/getLoanFilesByUserId/:userId", getLoanFilesByUserId);
+router.get("/admindashboardcount", admindashboardcount);
 
 module.exports = router;

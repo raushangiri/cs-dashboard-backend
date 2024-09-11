@@ -779,7 +779,7 @@ const getDocumentsCountByUserId = async (req, res) => {
     const { userId } = req.params; 
     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
     const loanFileCount = await loanfilemodel.countDocuments({ sales_agent_id: sanitizedUserId });
-    const interestedCount = await dispositionmodel.countDocuments({ 
+    const interestedCount = await loanfilemodel.countDocuments({ 
       userId: sanitizedUserId,
       is_interested: 'Interested' 
     });
@@ -787,12 +787,16 @@ const getDocumentsCountByUserId = async (req, res) => {
       userId: sanitizedUserId,
       is_interested: 'NotInterested' 
     });
+
+    const userdata= await user.findOne({userId});
+  
     res.status(200).json({
       success: true,
       message: `Counts fetched for userId ${sanitizedUserId}`,
       loanFileCount, // Total loan file documents count
       interestedCount, // Count of Interested
-      notInterestedCount, // Count of Not Interested
+      notInterestedCount,
+      username: userdata.name// Count of Not Interested
     });
   } catch (error) {
     console.error('Error fetching document counts:', error);
@@ -915,7 +919,7 @@ const getLoandetails = async (req, res) => {
 
   try {
     // Find all loan entries by file number
-    const loanDetails = await LoandataModel.find({ file_number });
+    const loanDetails = await loanfilemodel.find({ file_number });
 
     if (!loanDetails || loanDetails.length === 0) {
       return res.status(404).json({ message: 'Loan details not found' });

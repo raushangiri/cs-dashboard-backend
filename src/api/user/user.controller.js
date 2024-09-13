@@ -231,8 +231,11 @@ console.log(userdata,"2954")
 
 const findteamleader = async (req, res) => {
   try {
-    const teamLeaders = await user.find({ role: 'Team leader' }, 'name');
-
+    const teamLeaders = await user.find(
+      { role: 'Team leader' },  // Query to find all users with the role 'Team leader'
+      { name: 1, userId: 1 }    // Projection to include only 'name' and 'userId'
+    );
+    
     // Check if no team leaders were found
     if (teamLeaders.length === 0) {
       return res.status(201).send({
@@ -240,24 +243,27 @@ const findteamleader = async (req, res) => {
         status: 201,
       });
     }
-
-    // Extract the names of the team leaders
-    const Teamleaderslist = teamLeaders.map(user => user.name);
-
-    // Return the names in the response
+  
+    // Extract both the name and userId of the team leaders
+    const Teamleaderslist = teamLeaders.map(user => ({
+      name: user.name,
+      userId: user.userId
+    }));
+  
+    // Return the names and userIds in the response
     return res.status(200).send({
       status: 200,
       Teamleaderslist,
     });
   } catch (error) {
-    console.error('Error finding team leaders:', error);
+    console.error('Error fetching team leaders:', error);
     return res.status(500).send({
-      message: "Error finding team leaders",
       status: 500,
+      message: 'Failed to fetch team leaders',
       error: error.message,
     });
   }
-};
+}  
 
 const getUserById = async (req, res) => {
   const { userId } = req.params; // Get userId from URL parameters

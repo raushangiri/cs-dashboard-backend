@@ -682,9 +682,11 @@ const createdesposition = async (req, res) => {
     not_interested_reason,
     remarks,
     file_status,
-    file_number
+    file_number,
+    type_of_loan
   } = req.body;
 
+  console.log(file_status,"file_status")
   try {
     const userdetails = await user.findOne({ userId });
     if (!userdetails) {
@@ -703,11 +705,14 @@ const createdesposition = async (req, res) => {
       not_interested_reason,
       remarks,
       file_status,
-      file_number
+      file_number,
+      type_of_loan
     });
 
     await newDisposition.save();
     const loanFile = await loanfilemodel.findOne({ file_number });
+
+
     if (!loanFile) {
       return res.status(404).json({ message: 'File not found' });
     }
@@ -718,6 +723,11 @@ const createdesposition = async (req, res) => {
         if (!loanFile.sales_agent_id.trim()) {
           updateData.sales_agent_id = userId;
           updateData.sales_status = call_status;
+          updateData.file_status=file_status;
+          updateNeeded = true;
+        }
+        else{
+          updateData.file_status=file_status;
           updateNeeded = true;
         }
         break;
@@ -725,6 +735,10 @@ const createdesposition = async (req, res) => {
         if (!loanFile.tvr_agent_id.trim()) {
           updateData.tvr_agent_id = userId;
           updateData.tvr_status = call_status;
+          updateData.file_status=file_status;
+          updateNeeded = true;
+        }else{
+          updateData.file_status=file_status;
           updateNeeded = true;
         }
         break;
@@ -732,6 +746,10 @@ const createdesposition = async (req, res) => {
         if (!loanFile.cdr_agent_id.trim()) {
           updateData.cdr_agent_id = userId;
           updateData.cdr_status = call_status;
+          updateData.file_status=file_status;
+          updateNeeded = true;
+        }else{
+          updateData.file_status=file_status;
           updateNeeded = true;
         }
         break;
@@ -739,6 +757,10 @@ const createdesposition = async (req, res) => {
         if (!loanFile.banklogin_agent_id.trim()) {
           updateData.banklogin_agent_id = userId;
           updateData.bank_login_status = call_status;
+          updateData.file_status=file_status;
+          updateNeeded = true;
+        }else{
+          updateData.file_status=file_status;
           updateNeeded = true;
         }
         break;
@@ -927,21 +949,54 @@ const getLoanFilesByUserId = async (req, res) => {
   try {
     const { userId } = req.params; 
     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
-    const loanFiles = await loanfilemodel.find({ sales_agent_id: sanitizedUserId });
+
+    // Fetch user details based on userId
+    const userRecord = await user.findOne({ userId: sanitizedUserId });
+    
+    // If no user found, return an error
+    if (!userRecord) {
+      return res.status(404).json({
+        success: false,
+        message: `User not found with userId ${sanitizedUserId}`,
+      });
+    }
+
+    // Determine the query based on user role
+    let query = {};
+    if (userRecord.role === 'sales') {
+      query = { sales_agent_id: sanitizedUserId };
+    } else if (userRecord.role === 'CDR') {
+      query = { cdr_agent_id: sanitizedUserId };
+    } else if (userRecord.role === 'TVR') {
+      query = { tvr_agent_id: sanitizedUserId };
+    } else if (userRecord.role === 'admin') {
+      query = {}; // Admin gets all loan files
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid role for userId ${sanitizedUserId}`,
+      });
+    }
+
+    // Fetch loan files based on the constructed query
+    const loanFiles = await loanfilemodel.find(query);
+
     if (loanFiles.length === 0) {
       return res.status(404).json({
         success: false,
         message: `No loan files found for userId ${sanitizedUserId}`,
       });
     }
-    res.status(200).json({
+
+    // Return the loan files found
+    return res.status(200).json({
       success: true,
       message: `Loan files found for userId ${sanitizedUserId}`,
       loanFiles,
     });
   } catch (error) {
     console.error('Error fetching loan files:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to fetch loan files',
       error: error.message,
@@ -989,6 +1044,109 @@ const admindashboardcount = async (req, res) => {
   }
 };
 
+const getAllLoanFiles = async (req, res) => {
+  try {
+    const loanFiles = await loanfilemodel.find();
+
+    if (!loanFiles || loanFiles.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No loan files found',
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: 'Loan files retrieved successfully',
+      data: loanFiles,
+    });
+  } catch (error) {
+    console.error('Error fetching loan files:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch loan files',
+      error: error.message,
+    });
+  }
+};
+
+const getProcessToTVRFiles = async (req, res) => {
+  try {
+    // Fetch all records where file_status is "process_to_tvr" and tvr_agent_id is an empty string
+    const files = await loanfilemodel.find({
+      file_status: 'process_to_tvr',
+      tvr_agent_id: ' '
+    });
+
+    if (files.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No files found with status 'process_to_tvr' and empty 'tvr_agent_id'."
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Records fetched successfully',
+      data: files
+    });
+  } catch (error) {
+    console.error('Error fetching process_to_tvr files:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch records',
+      error: error.message
+    });
+  }
+};
+
+const getProcessToCDRFiles = async (req, res) => {
+  try {
+    // Fetch all records where file_status is "process_to_cdr" and cdr_agent_id is an empty string
+    const loanFiles = await loanfilemodel.find({
+      file_status: 'process_to_cdr',
+      cdr_agent_id: ' ' // Ensure this is correct, or replace with "" if required
+    });
+
+    if (loanFiles.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No files found with status 'process_to_cdr' and empty 'cdr_agent_id'."
+      });
+    }
+
+    // Fetch the type_of_loan from the personal_details_model using the file_number from loanFiles
+    const filesWithLoanDetails = await Promise.all(
+      loanFiles.map(async (file) => {
+        const personalDetails = await personal_details_model.findOne({
+          file_number: file.file_number
+        });
+
+        // Include type_of_loan if found, or return null if not available
+        return {
+          ...file.toObject(),
+          type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Available'
+        };
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Records fetched successfully',
+      data: filesWithLoanDetails
+    });
+  } catch (error) {
+    console.error('Error fetching process_to_cdr files:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch records',
+      error: error.message
+    });
+  }
+};
+
+
+
+
 
 
 
@@ -1007,5 +1165,8 @@ module.exports = {
   getLoandetails,
   getDocumentsCountByUserId,
   getLoanFilesByUserId,
-  admindashboardcount
+  admindashboardcount,
+  getAllLoanFiles,
+  getProcessToTVRFiles,
+  getProcessToCDRFiles
 };

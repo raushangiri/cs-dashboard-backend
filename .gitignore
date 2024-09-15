@@ -6,8 +6,8 @@
 # Node artifact files
 node_modules/
 dist/
-private.key
-public.key
+# private.key
+# public.key
 # Compiled Java class files
 *.class
 

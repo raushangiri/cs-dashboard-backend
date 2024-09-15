@@ -8,6 +8,7 @@ const user = require("../../model/user.model");
 const mongoose = require('mongoose'); // Ensure mongoose is imported
 const LoandataModel = require("../../model/loandata.model");
 const loanfilemodel = require('../../model/loan_file.model'); // Assuming your model is in the same folder
+const attachmentmodel = require('../../model/attachment.model'); // Assuming your model is in the same folder
 
 
 
@@ -988,11 +989,25 @@ const getLoanFilesByUserId = async (req, res) => {
       });
     }
 
+
+    const filesWithLoanDetails = await Promise.all(
+      loanFiles.map(async (file) => {
+        const personalDetails = await personal_details_model.findOne({
+          file_number: file.file_number
+        });
+
+        // Include type_of_loan if found, or return null if not available
+        return {
+          ...file.toObject(),
+          type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Available'
+        };
+      })
+    );
     // Return the loan files found
     return res.status(200).json({
       success: true,
-      message: `Loan files found for userId ${sanitizedUserId}`,
-      loanFiles,
+      message: 'Records fetched successfully',
+      data: filesWithLoanDetails
     });
   } catch (error) {
     console.error('Error fetching loan files:', error);
@@ -1145,8 +1160,59 @@ const getProcessToCDRFiles = async (req, res) => {
 };
 
 
+const updatedocumentdata= async (req, res) => {
+  try {
+    const { file_number, document_type, document_name, downloadUrl, readUrl } = req.body;
+
+    if (!file_number || !document_type || !document_name || !downloadUrl || !readUrl) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    const newAttachment = new attachmentmodel({
+      file_number,
+      document_type,
+      document_name,
+      downloadUrl,
+      readUrl
+    });
+
+    const savedAttachment = await newAttachment.save();
+
+    res.status(201).json({
+      message: 'Attachment saved successfully',
+      attachment: savedAttachment
+    });
+  } catch (error) {
+    console.error('Error saving attachment:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 
 
+const getdocumentdata=async (req, res) => {
+  try {
+    const { file_number } = req.params;
+
+    if (!file_number) {
+      return res.status(400).json({ error: 'File name parameter is required' });
+    }
+
+    // Find all attachments where the file name matches the provided file_name
+    const attachments = await attachmentmodel.find({ file_number: file_number });
+
+    if (attachments.length === 0) {
+      return res.status(404).json({ message: 'No attachments found for the given file name' });
+    }
+
+    res.status(200).json({
+      message: 'Attachments retrieved successfully',
+      attachments
+    });
+  } catch (error) {
+    console.error('Error retrieving attachments:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 
 
 
@@ -1168,5 +1234,7 @@ module.exports = {
   admindashboardcount,
   getAllLoanFiles,
   getProcessToTVRFiles,
-  getProcessToCDRFiles
+  getProcessToCDRFiles,
+  updatedocumentdata,
+  getdocumentdata
 };

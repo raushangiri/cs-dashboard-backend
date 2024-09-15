@@ -18,7 +18,9 @@ const {
   admindashboardcount,
   getAllLoanFiles,
   getProcessToTVRFiles,
-  getProcessToCDRFiles
+  getProcessToCDRFiles,
+  updatedocumentdata,
+  getdocumentdata
 } = require("./auto_loan.controller");
 
 router.post("/createAutoLoanApplication", createAutoLoanApplication);
@@ -39,5 +41,7 @@ router.get("/admindashboardcount", admindashboardcount);
 router.get("/getAllLoanFiles", getAllLoanFiles);
 router.get("/getProcessToTVRFiles", getProcessToTVRFiles);
 router.get("/getProcessToCDRFiles", getProcessToCDRFiles);
+router.post("/updatedocumentdata", updatedocumentdata);
+router.get("/getdocumentdata/:file_number", getdocumentdata);
 
 module.exports = router;

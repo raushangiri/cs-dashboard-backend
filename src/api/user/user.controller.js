@@ -152,29 +152,32 @@ const getalluser = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { userId, password } = req.body;
-    const userdata = await user.findOne({ userId });
+    const { userId, password, role } = req.body; // Extract role from request body
+    const userdata = await user.findOne({ userId, role }); // Match both userId and role
 
-    if (!userdata) { // Should check for `userdata` instead of `user`
-      return res.status(400).send({ message: "Invalid userId" });
+    // Check if user exists
+    if (!userdata) {
+      return res.status(400).send({ message: "Invalid userId or role" });
     }
 
+    // Check if password matches
     const isMatch = await bcrypt.compare(password, userdata.password);
-
     if (!isMatch) {
-      return res.status(400).send({ message: "Invalid userId or password" });
+      return res.status(400).send({ message: "Invalid userId, password, or role" });
     }
 
+    // Check if the user needs to change their password
     if (!userdata.hasChangedPassword) {
       return res.status(200).send({
         message: "Password change required",
-        userId: userdata.userId, // Corrected to `userdata.userId`
+        userId: userdata.userId,
         status: 200,
       });
     }
 
+    // Generate JWT token
     const token = jwt.sign(
-      { userId: userdata.userId, role: userdata.role }, // Corrected to `userdata`
+      { userId: userdata.userId, role: userdata.role }, // Include role in token
       "yourSecretKey",
       { expiresIn: "1h" }
     );
@@ -182,13 +185,15 @@ const login = async (req, res) => {
     return res.status(200).send({
       message: "Login successful",
       token,
-      userId,
+      userId: userdata.userId, // Send back the userId
+      role: userdata.role, // Send back the role
       status: 200,
     });
   } catch (error) {
     return res.status(500).send({ message: error.message, status: 500 });
   }
 };
+
 
 
 const changePassword = async (req, res) => {

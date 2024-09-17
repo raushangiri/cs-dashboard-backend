@@ -934,7 +934,7 @@ const getLoandetails = async (req, res) => {
 
   try {
     // Find all loan entries by file number
-    const loanDetails = await loanfilemodel.find({ file_number });
+    const loanDetails = await LoandataModel.find({ file_number });
 
     if (!loanDetails || loanDetails.length === 0) {
       return res.status(404).json({ message: 'Loan details not found' });

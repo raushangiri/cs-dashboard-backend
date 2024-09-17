@@ -51,5 +51,5 @@ Thumbs.db
 
 redhatubi8.txt
 rockylinuxdocker.txt
-private.key
-public.key
+# private.key
+# public.key

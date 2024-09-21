@@ -20,7 +20,8 @@ const {
   getProcessToTVRFiles,
   getProcessToCDRFiles,
   updatedocumentdata,
-  getdocumentdata
+  getdocumentdata,
+  getSalesTeamLoanFiles
 } = require("./auto_loan.controller");
 
 router.post("/createAutoLoanApplication", createAutoLoanApplication);
@@ -43,5 +44,8 @@ router.get("/getProcessToTVRFiles", getProcessToTVRFiles);
 router.get("/getProcessToCDRFiles", getProcessToCDRFiles);
 router.post("/updatedocumentdata", updatedocumentdata);
 router.get("/getdocumentdata/:file_number", getdocumentdata);
+router.get("/getSalesTeamLoanFiles/:userId", getSalesTeamLoanFiles);
+
+
 
 module.exports = router;

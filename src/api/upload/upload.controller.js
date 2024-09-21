@@ -73,6 +73,10 @@ const axios = require('axios');
 const FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
+const ftp = require('basic-ftp');
+const client = new ftp.Client();
+client.ftp.verbose = true; // Enable verbose mode to get more details
+client.ftp.timeout = 30000; // Increase timeout to 30 seconds
 
 // Firebase Storage Configuration
 const STORAGE_BUCKET = 'jbj-fintech.appspot.com';
@@ -109,5 +113,38 @@ async function uploadFileToFirebase(filePath) {
     }
 }
 
-module.exports = { uploadFileToFirebase };
+const uploadFile = async (req, res) => {
+    const client = new ftp.Client();
+    client.ftp.timeout = 30000;
+    try {
+        // Connect to the FTP server
+        await client.access({
+          host: '100.212.213.251',
+          user: 'Server',
+          password: 'jbj@0007',
+          secure: false, // Set to true if using FTPS
+        });
+      
+        console.log("Connected to the FTP server");
+      
+        // Ensure that the 'test' directory exists
+        await client.ensureDir('/remote/path/test');
+        console.log('Folder "test" created or already exists');
+      
+        // Upload the file to the 'test' directory
+        await client.uploadFrom('./loan_image.jpg', 'test/loan_image.jpg');
+        console.log('File uploaded successfully to the "test" folder');
+      
+      } catch (err) {
+        console.error('Error:', err);
+      } finally {
+        client.close();
+      }
+    };
+  
+  
+
+
+
+module.exports = { uploadFileToFirebase,uploadFile };
 

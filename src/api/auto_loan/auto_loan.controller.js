@@ -343,22 +343,26 @@ const generateFileNumber = async () => {
 };
 
 const uploadData = async (req, res) => {
+  const session = await mongoose.startSession(); // Start MongoDB session for transactions
+  session.startTransaction(); // Begin a transaction
+
   try {
     const data = req.body;
-    
-    const batchSize = 100; // Define the batch size (adjustable based on performance)
-    const totalBatches = Math.ceil(data.length / batchSize); // Calculate the total number of batches
 
-    // Process data in batches to prevent overloading memory
+    const batchSize = 500; // Adjust batch size (try larger sizes based on performance)
+    const totalBatches = Math.ceil(data.length / batchSize);
+
+    // Loop through the data in batches
     for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
       const batch = data.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
 
-      // Transform and validate data
-      const transformedData = await Promise.all(batch.map(async (item) => {
-        // Generate a unique 5-digit file number for each entry
-        const fileNumber = await generateFileNumber();
+      // Prepare documents for batch insert
+      const overviewDocs = [];
+      const fileStatusDocs = [];
 
-        // Insert the transformed data into the first collection
+      for (let item of batch) {
+        const fileNumber = await generateFileNumber(); // Generate unique file number
+
         const overviewDoc = {
           file_number: fileNumber,
           mobile_number: item["Customer Number"],
@@ -368,9 +372,11 @@ const uploadData = async (req, res) => {
           customer_name: item["Customer Name"],
           previous_loan_type: item["Loan Type"],
           previous_loan_amount: item["Loan Amount"],
-          previous_loan_insurance_value: item["Insurance"],
+          previous_loan_insurance_value: item["Loan Insurance Value"],
+          previous_loan_insurance_bank_name: item["Loan Insurance Bank Name"],
           permanentAddress: item["Permanent address"],
           location: item["Location"],
+          city: item["City"],
           companyName: item["Company Name"],
           salary: item["Salary"],
           selfEmployee: item["Self Employee"],
@@ -382,32 +388,41 @@ const uploadData = async (req, res) => {
           carDetails: item["Car Details"],
           model: item["Modal"],
           carNumber: item["Car Number"],
-          // Additional fields as needed
         };
 
-        // Insert into the second collection (loanfilesSchema)
         const fileStatusDoc = {
           file_number: fileNumber,
           customer_name: item["Customer Name"],
           customer_mobile_number: item["Customer Number"],
-          // Default values for the rest of the fields in loanfilesSchema
+          // Add default values for other fields if necessary
         };
 
-        // Save both documents in parallel
-        await Promise.all([
-          overview_details.create(overviewDoc),
-          loanfilemodel.create(fileStatusDoc),
-        ]);
+        // Push to arrays
+        overviewDocs.push(overviewDoc);
+        fileStatusDocs.push(fileStatusDoc);
+      }
 
-        return overviewDoc; // Return the overview data (can be omitted if not needed)
-      }));
+      // Perform bulk inserts in parallel for both collections
+      await Promise.all([
+        overview_details.insertMany(overviewDocs, { session }), // Bulk insert for first collection
+        loanfilemodel.insertMany(fileStatusDocs, { session }), // Bulk insert for second collection
+      ]);
 
       console.log(`Batch ${batchIndex + 1} processed successfully`);
     }
 
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
     res.status(200).json({ message: 'Data stored successfully!' });
   } catch (error) {
     console.error('Error in processing data:', error);
+
+    // Abort the transaction in case of error
+    await session.abortTransaction();
+    session.endSession();
+
     res.status(500).json({ message: 'Failed to store data.' });
   }
 };
@@ -931,7 +946,7 @@ const createLoandetails = async (req, res) => {
 // Get all loan details by file number
 const getLoandetails = async (req, res) => {
   const { file_number } = req.params;
-
+console.log(file_number,"file_number");
   try {
     // Find all loan entries by file number
     const loanDetails = await LoandataModel.find({ file_number });
@@ -951,10 +966,7 @@ const getLoanFilesByUserId = async (req, res) => {
     const { userId } = req.params; 
     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
 
-    // Fetch user details based on userId
     const userRecord = await user.findOne({ userId: sanitizedUserId });
-    
-    // If no user found, return an error
     if (!userRecord) {
       return res.status(404).json({
         success: false,
@@ -962,7 +974,6 @@ const getLoanFilesByUserId = async (req, res) => {
       });
     }
 
-    // Determine the query based on user role
     let query = {};
     if (userRecord.role === 'sales') {
       query = { sales_agent_id: sanitizedUserId };
@@ -972,7 +983,12 @@ const getLoanFilesByUserId = async (req, res) => {
       query = { tvr_agent_id: sanitizedUserId };
     } else if (userRecord.role === 'admin') {
       query = {}; // Admin gets all loan files
-    } else {
+    } 
+   else if (userRecord.role === 'Team leader') {
+    query = {}; // Admin gets all loan files
+  }
+    
+    else {
       return res.status(400).json({
         success: false,
         message: `Invalid role for userId ${sanitizedUserId}`,
@@ -1188,7 +1204,6 @@ const updatedocumentdata= async (req, res) => {
   }
 };
 
-
 const getdocumentdata=async (req, res) => {
   try {
     const { file_number } = req.params;
@@ -1214,6 +1229,58 @@ const getdocumentdata=async (req, res) => {
   }
 };
 
+const getSalesTeamLoanFiles = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Step 1: Find users where role is 'sales' and reportingTo is the userId from params
+    const salesUsers = await user.find({ role: 'sales', reportingTo: userId }).lean();
+    
+    if (!salesUsers || salesUsers.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: 'No Team Assigned to User',
+      });
+    }
+
+    // Step 2: Extract userIds from the fetched sales users
+    const salesUserIds = salesUsers.map(salesUser => salesUser.userId); // Assuming userId is a field in the user model
+
+    // Step 3: Find loan files where sales_agent_id matches the salesUserIds
+    const loanFiles = await loanfilemodel.find({ sales_agent_id: { $in: salesUserIds } }).lean();
+
+    if (!loanFiles || loanFiles.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: 'No loan files found',
+      });
+    }
+
+    // Step 4: Map sales agents' names to their respective loan files
+    const loanFilesWithSalesAgent = loanFiles.map(loanFile => {
+      const salesAgent = salesUsers.find(salesUser => salesUser.userId === loanFile.sales_agent_id);
+      return {
+        ...loanFile,
+        sales_agent_name: salesAgent ? salesAgent.name : 'Unknown Agent', // Attach the sales agent's name
+      };
+    });
+
+    // Step 5: Return the result
+    return res.status(200).json({
+      status: 200,
+      message: `Loan files found for sales agents reporting to user with ID: ${userId}`,
+      data: loanFilesWithSalesAgent,
+    });
+
+  } catch (err) {
+    console.error('Error fetching loan files:', err);
+    return res.status(500).json({
+      status: 500,
+      message: 'Internal server error',
+      error: err.message,
+    });
+  }
+};
 
 
 module.exports = {
@@ -1236,5 +1303,6 @@ module.exports = {
   getProcessToTVRFiles,
   getProcessToCDRFiles,
   updatedocumentdata,
-  getdocumentdata
+  getdocumentdata,
+  getSalesTeamLoanFiles
 };

@@ -39,10 +39,14 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { uploadFileToFirebase } = require('./upload.controller');
+const { uploadFileToFirebase,uploadFile } = require('./upload.controller');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // Store file in memory for easier handling
+
+router.post("/uploadFile", uploadFile);
+
+
 
 router.post('/upload', upload.single('file'), async (req, res) => {
     try {
@@ -79,6 +83,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         return res.status(500).json({ error: 'Failed to upload file.' });
     }
 });
+
+
+
 
 module.exports = router;
 

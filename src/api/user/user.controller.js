@@ -149,7 +149,6 @@ const getalluser = async (req, res) => {
   }
 };
 
-
 const login = async (req, res) => {
   try {
     const { userId, password, role } = req.body; // Extract role from request body
@@ -193,8 +192,6 @@ const login = async (req, res) => {
     return res.status(500).send({ message: error.message, status: 500 });
   }
 };
-
-
 
 const changePassword = async (req, res) => {
   console.log("API called")
@@ -298,7 +295,6 @@ const getUserById = async (req, res) => {
   }
 };
 
-
 const updateUser = async (req, res) => {
   console.log("Update API called");
   try {
@@ -369,6 +365,33 @@ const updateUser = async (req, res) => {
   }
 };
 
+const getUserbyteamleader = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const users = await user.find({ reportingTo: userId });
+    if (users.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: `No users found reporting to user with ID: ${userId}`,
+      });
+    }
+    return res.status(200).json({
+      status: 200,
+      message: `Users reporting to user with ID: ${userId}`,
+      data: users,
+    });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "An error occurred while fetching users",
+      error: error.message,
+    });
+  }
+};
+
+
+
 
 module.exports = {
   createuser1,
@@ -379,5 +402,6 @@ module.exports = {
   deleteUser,
   findteamleader,
   updateUser,
-  getUserById
+  getUserById,
+  getUserbyteamleader
 };

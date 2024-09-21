@@ -10,7 +10,8 @@ const {
   deleteUser,
   findteamleader,
   updateUser,
-  getUserById
+  getUserById,
+  getUserbyteamleader
 } = require("../user/user.controller");
 const auth = require("../../middlewares/auth");
 
@@ -23,6 +24,9 @@ router.delete("/deleteUser",deleteUser);
 router.get("/findteamleader",findteamleader);
 router.put("/updateUser",updateUser);
 router.get("/getUserById/:userId",getUserById);
+router.get("/getUserbyteamleader/:userId",getUserbyteamleader);
+
+
 
 
 

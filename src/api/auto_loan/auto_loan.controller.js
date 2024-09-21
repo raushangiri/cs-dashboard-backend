@@ -702,7 +702,7 @@ const createdesposition = async (req, res) => {
     type_of_loan
   } = req.body;
 
-  console.log(file_status,"file_status")
+  // console.log(file_status,"file_status")
   try {
     const userdetails = await user.findOne({ userId });
     if (!userdetails) {
@@ -738,7 +738,7 @@ const createdesposition = async (req, res) => {
       case 'sales':
         if (!loanFile.sales_agent_id.trim()) {
           updateData.sales_agent_id = userId;
-          updateData.sales_status = call_status;
+          updateData.sales_status = is_interested;
           updateData.file_status=file_status;
           updateNeeded = true;
         }
@@ -750,7 +750,7 @@ const createdesposition = async (req, res) => {
       case 'TVR':
         if (!loanFile.tvr_agent_id.trim()) {
           updateData.tvr_agent_id = userId;
-          updateData.tvr_status = call_status;
+          updateData.tvr_status = file_status;
           updateData.file_status=file_status;
           updateNeeded = true;
         }else{
@@ -761,7 +761,7 @@ const createdesposition = async (req, res) => {
       case 'CDR':
         if (!loanFile.cdr_agent_id.trim()) {
           updateData.cdr_agent_id = userId;
-          updateData.cdr_status = call_status;
+          updateData.cdr_status = file_status;
           updateData.file_status=file_status;
           updateNeeded = true;
         }else{
@@ -769,10 +769,10 @@ const createdesposition = async (req, res) => {
           updateNeeded = true;
         }
         break;
-      case 'BankLogin':
+      case 'Bank login':
         if (!loanFile.banklogin_agent_id.trim()) {
           updateData.banklogin_agent_id = userId;
-          updateData.bank_login_status = call_status;
+          updateData.bank_login_status = file_status;
           updateData.file_status=file_status;
           updateNeeded = true;
         }else{
@@ -819,6 +819,15 @@ const getDocumentsCountByUserId = async (req, res) => {
       userId: sanitizedUserId,
       is_interested: 'NotInterested' 
     });
+    const pendingTvrCount = await loanfilemodel.countDocuments({ 
+      sales_agent_id: sanitizedUserId,
+      file_status: 'process_to_tvr' 
+    });
+    const pendingCdrCount = await loanfilemodel.countDocuments({ 
+      sales_agent_id: sanitizedUserId,
+      file_status: 'process_to_cdr' 
+    });
+    
 
     const userdata= await user.findOne({userId});
   
@@ -828,6 +837,9 @@ const getDocumentsCountByUserId = async (req, res) => {
       loanFileCount, // Total loan file documents count
       interestedCount, // Count of Interested
       notInterestedCount,
+      pendingTvrCount,
+      completedtvrcount:pendingCdrCount,
+      pendingCdrCount,
       username: userdata.name// Count of Not Interested
     });
   } catch (error) {
@@ -987,6 +999,9 @@ const getLoanFilesByUserId = async (req, res) => {
    else if (userRecord.role === 'Team leader') {
     query = {}; // Admin gets all loan files
   }
+  else if (userRecord.role === 'Bank login') {
+    query = {banklogin_agent_id: sanitizedUserId}; 
+  }
     
     else {
       return res.status(400).json({
@@ -1102,11 +1117,11 @@ const getAllLoanFiles = async (req, res) => {
 
 const getProcessToTVRFiles = async (req, res) => {
   try {
-    // Fetch all records where file_status is "process_to_tvr" and tvr_agent_id is an empty string
+    // Step 1: Fetch all records where file_status is "process_to_tvr" and tvr_agent_id is an empty string
     const files = await loanfilemodel.find({
       file_status: 'process_to_tvr',
       tvr_agent_id: ' '
-    });
+    }).lean();
 
     if (files.length === 0) {
       return res.status(404).json({
@@ -1115,10 +1130,49 @@ const getProcessToTVRFiles = async (req, res) => {
       });
     }
 
+    // Step 2: Extract sales_agent_ids from the files
+    const salesAgentIds = files.map(file => file.sales_agent_id);
+
+    // Step 3: Fetch the corresponding sales agents' details from the user collection
+    const salesAgents = await user.find({
+      userId: { $in: salesAgentIds }
+    }).select('userId name').lean();
+
+    // Step 4: Create a map of userId -> name for easy lookup
+    const salesAgentMap = salesAgents.reduce((acc, agent) => {
+      acc[agent.userId] = agent.name;
+      return acc;
+    }, {});
+
+    // Step 5: Extract file_numbers from the files
+    const fileNumbers = files.map(file => file.file_number);
+
+    // Step 6: Fetch the loan types and loan categories from the personal_details_model based on file_number
+    const personalDetails = await personal_details_model.find({
+      file_number: { $in: fileNumbers }
+    }).select('file_number type_of_loan loan_category').lean();
+
+    // Step 7: Create a map of file_number -> {loan_type, loan_category} for easy lookup
+    const loanDetailsMap = personalDetails.reduce((acc, detail) => {
+      acc[detail.file_number] = {
+        type_of_loan: detail.type_of_loan,
+        loan_category: detail.loan_category
+      };
+      return acc;
+    }, {});
+
+    // Step 8: Append the sales agent's name, loan type, and loan category to each file record
+    const filesWithDetails = files.map(file => ({
+      ...file,
+      sales_agent_name: salesAgentMap[file.sales_agent_id] || 'Unknown Agent',
+      type_of_loan: loanDetailsMap[file.file_number]?.type_of_loan || 'Unknown Loan Type',
+      loan_category: loanDetailsMap[file.file_number]?.loan_category || 'Unknown Loan Category'
+    }));
+
     return res.status(200).json({
       success: true,
       message: 'Records fetched successfully',
-      data: files
+      data: filesWithDetails
     });
   } catch (error) {
     console.error('Error fetching process_to_tvr files:', error);
@@ -1130,35 +1184,64 @@ const getProcessToTVRFiles = async (req, res) => {
   }
 };
 
+
 const getProcessToCDRFiles = async (req, res) => {
   try {
     // Fetch all records where file_status is "process_to_cdr" and cdr_agent_id is an empty string
-    const loanFiles = await loanfilemodel.find({
+    const files = await loanfilemodel.find({
       file_status: 'process_to_cdr',
-      cdr_agent_id: ' ' // Ensure this is correct, or replace with "" if required
-    });
+      cdr_agent_id: '' // Correct empty string
+    }).lean();
 
-    if (loanFiles.length === 0) {
+    if (files.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No files found with status 'process_to_cdr' and empty 'cdr_agent_id'."
       });
     }
 
-    // Fetch the type_of_loan from the personal_details_model using the file_number from loanFiles
-    const filesWithLoanDetails = await Promise.all(
-      loanFiles.map(async (file) => {
-        const personalDetails = await personal_details_model.findOne({
-          file_number: file.file_number
-        });
+    // Extract sales_agent_ids from the files
+    const salesAgentIds = files.map(file => file.sales_agent_id);
 
-        // Include type_of_loan if found, or return null if not available
-        return {
-          ...file.toObject(),
-          type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Available'
-        };
-      })
-    );
+    // Fetch corresponding sales agents' details from the user collection
+    const salesAgents = await user.find({
+      userId: { $in: salesAgentIds }
+    }).select('userId name').lean();
+
+    // Create a map of userId -> name for easy lookup
+    const salesAgentMap = salesAgents.reduce((acc, agent) => {
+      acc[agent.userId] = agent.name;
+      return acc;
+    }, {});
+
+    // Extract file_numbers from the files
+    const fileNumbers = files.map(file => file.file_number);
+
+    // Fetch loan types and loan categories from the personal_details_model based on file_number
+    const personalDetails = await personal_details_model.find({
+      file_number: { $in: fileNumbers }
+    }).select('file_number type_of_loan loan_category').lean();
+
+    // Create a map of file_number -> {loan_type, loan_category} for easy lookup
+    const loanDetailsMap = personalDetails.reduce((acc, detail) => {
+      acc[detail.file_number] = {
+        type_of_loan: detail.type_of_loan,
+        loan_category: detail.loan_category
+      };
+      return acc;
+    }, {});
+
+    // Append the sales agent's name, loan type, and loan category to each file record
+    const filesWithLoanDetails = files.map(file => {
+      const { type_of_loan = 'Unknown Loan Type', loan_category = 'Unknown Loan Category' } = loanDetailsMap[file.file_number] || {};
+      
+      return {
+        ...file,
+        sales_agent_name: salesAgentMap[file.sales_agent_id] || 'Unknown Agent',
+        type_of_loan,
+        loan_category
+      };
+    });
 
     return res.status(200).json({
       success: true,
@@ -1175,6 +1258,78 @@ const getProcessToCDRFiles = async (req, res) => {
   }
 };
 
+const getProcessToBankloginFiles = async (req, res) => {
+  try {
+    // Fetch all records where file_status is "process_to_cdr" and cdr_agent_id is an empty string
+    const files = await loanfilemodel.find({
+      file_status: 'process_to_login_team',
+      banklogin_agent_id: ' ' // Correct empty string
+    }).lean();
+
+    if (files.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No files found with status 'process_to_login_team' and empty 'cdr_agent_id'."
+      });
+    }
+
+    // Extract sales_agent_ids from the files
+    const salesAgentIds = files.map(file => file.sales_agent_id);
+
+    // Fetch corresponding sales agents' details from the user collection
+    const salesAgents = await user.find({
+      userId: { $in: salesAgentIds }
+    }).select('userId name').lean();
+
+    // Create a map of userId -> name for easy lookup
+    const salesAgentMap = salesAgents.reduce((acc, agent) => {
+      acc[agent.userId] = agent.name;
+      return acc;
+    }, {});
+
+    // Extract file_numbers from the files
+    const fileNumbers = files.map(file => file.file_number);
+
+    // Fetch loan types and loan categories from the personal_details_model based on file_number
+    const personalDetails = await personal_details_model.find({
+      file_number: { $in: fileNumbers }
+    }).select('file_number type_of_loan loan_category').lean();
+
+    // Create a map of file_number -> {loan_type, loan_category} for easy lookup
+    const loanDetailsMap = personalDetails.reduce((acc, detail) => {
+      acc[detail.file_number] = {
+        type_of_loan: detail.type_of_loan,
+        loan_category: detail.loan_category
+      };
+      return acc;
+    }, {});
+
+    // Append the sales agent's name, loan type, and loan category to each file record
+    const filesWithLoanDetails = files.map(file => {
+      const { type_of_loan = 'Unknown Loan Type', loan_category = 'Unknown Loan Category' } = loanDetailsMap[file.file_number] || {};
+      
+      return {
+        ...file,
+        sales_agent_name: salesAgentMap[file.sales_agent_id] || 'Unknown Agent',
+        type_of_loan,
+        loan_category
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Records fetched successfully',
+      data: filesWithLoanDetails
+    });
+  } catch (error) {
+    console.error('Error fetching process_to_banklogin files:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch records',
+      error: error.message
+    });
+  }
+}
 
 const updatedocumentdata= async (req, res) => {
   try {
@@ -1283,6 +1438,8 @@ const getSalesTeamLoanFiles = async (req, res) => {
 };
 
 
+
+
 module.exports = {
   createAutoLoanApplication,
   uploadData,
@@ -1304,5 +1461,7 @@ module.exports = {
   getProcessToCDRFiles,
   updatedocumentdata,
   getdocumentdata,
-  getSalesTeamLoanFiles
+  getSalesTeamLoanFiles,
+  getProcessToBankloginFiles
+
 };

@@ -24,6 +24,10 @@ const personaldata_schema = new mongoose.Schema(
         type: String,
         default:""
     },
+    customerName: {
+        type: String,
+        default:""
+    },
     name: {
         type: String,
         default:""

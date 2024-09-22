@@ -528,6 +528,7 @@ const createpersonadetails = async (req, res) => {
     loan_category,
     required_amount,
     mobile_number,
+    customerName,
     name,
     occupation_type,
     nature_of_business,
@@ -567,6 +568,7 @@ const createpersonadetails = async (req, res) => {
           loan_category,
           required_amount,
           mobile_number,
+          customerName,
           name,
           occupation_type,
           nature_of_business,
@@ -916,6 +918,22 @@ const getdesposition= async (req, res) => {
   }
 };
 
+const getDispositionById = async (req, res) => {
+  const { _id } = req.params; // Extract _id from request parameters
+
+  try {
+    const document = await dispositionmodel.findById(_id); // Use findById to get the document by _id
+
+    if (!document) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+
+    res.status(200).json({ data: document });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching document', error: error.message });
+  }
+};
+
 const createLoandetails = async (req, res) => {
   const { file_number } = req.params;
 
@@ -961,7 +979,7 @@ const getLoandetails = async (req, res) => {
 console.log(file_number,"file_number");
   try {
     // Find all loan entries by file number
-    const loanDetails = await LoandataModel.find({ file_number });
+    const loanDetails = await LoandataModel.find({ file_number:file_number });
 
     if (!loanDetails || loanDetails.length === 0) {
       return res.status(404).json({ message: 'Loan details not found' });
@@ -972,6 +990,59 @@ console.log(file_number,"file_number");
     res.status(500).json({ message: 'Error retrieving loan details', error: error.message });
   }
 };
+
+const getLoanfiledetailsbyfilenumber = async (req, res) => {
+  const { file_number } = req.params;
+  console.log(file_number, "file_number");
+
+  try {
+    // Find loan details by file number
+    const loanDetails = await loanfilemodel.findOne({ file_number: file_number });
+
+    if (!loanDetails) {
+      return res.status(404).json({ message: 'Loan details not found' });
+    }
+
+    // Retrieve loan type and loan category from the persondetails collection
+    const personDetails = await personal_details_model.findOne({ file_number: file_number }, 'type_of_loan loan_category');
+
+    if (!personDetails) {
+      return res.status(404).json({ message: 'Person details not found' });
+    }
+
+    // Retrieve agent IDs from loanDetails and convert them to strings
+    const { sales_agent_id, tvr_agent_id, cdr_agent_id, banklogin_agent_id } = loanDetails;
+
+    const agentIds = [sales_agent_id, tvr_agent_id, cdr_agent_id, banklogin_agent_id].map(String);
+
+    // Find agent names by userId
+    const agents = await user.find({ userId: { $in: agentIds } }, 'name userId');
+
+    // Create a map to easily find agent names by their userId
+    const agentMap = agents.reduce((acc, agent) => {
+      acc[agent.userId] = agent.name;
+      return acc;
+    }, {});
+
+    // Prepare the response with loan details and agent names
+    const response = {
+      type_of_loan: personDetails.type_of_loan,
+      loan_category: personDetails.loan_category,
+      sales_agent_name: agentMap[sales_agent_id] || 'N/A',
+      tvr_agent_name: agentMap[tvr_agent_id] || 'N/A',
+      cdr_agent_name: agentMap[cdr_agent_id] || 'N/A',
+      banklogin_agent_name: agentMap[banklogin_agent_id] || 'N/A',
+      loanDetails // Including other loan file details from loanfilemodel
+    };
+
+    res.status(200).json({ message: 'Loan details retrieved successfully', data: response });
+  } catch (error) {
+    console.error('Error retrieving loan details:', error);
+    res.status(500).json({ message: 'Error retrieving loan details', error: error.message });
+  }
+};
+
+
 
 const getLoanFilesByUserId = async (req, res) => {
   try {
@@ -1462,6 +1533,8 @@ module.exports = {
   updatedocumentdata,
   getdocumentdata,
   getSalesTeamLoanFiles,
-  getProcessToBankloginFiles
+  getProcessToBankloginFiles,
+  getLoanfiledetailsbyfilenumber,
+  getDispositionById
 
 };

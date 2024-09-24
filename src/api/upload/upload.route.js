@@ -39,14 +39,34 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { uploadFileToFirebase,uploadFile } = require('./upload.controller');
+const { uploadFileToFirebase,
+    uploadFile,
+    deleteFileFromFirebase,
+    deleteFileFromFtp, } = require('./upload.controller');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // Store file in memory for easier handling
 
 router.post("/uploadFile", uploadFile);
 
-
+router.delete('/delete/ftp', async (req, res) => {
+    try {
+        const filePath = req.body.filePath; // File path should be sent in the request body
+        await deleteFileFromFtp(filePath);
+        res.status(200).json({ message: 'File deleted successfully from FTP' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+router.delete('/delete', async (req, res) => {
+    try {
+        const documentUrl = req.body.documentUrl; // Document URL should be sent in the request body
+        await deleteFileFromFirebase(documentUrl);
+        res.status(200).json({ message: 'File deleted successfully from Firebase' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 router.post('/upload', upload.single('file'), async (req, res) => {
     try {

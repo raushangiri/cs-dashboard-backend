@@ -1,5 +1,12 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require('mongoose');
+const multer = require('multer');
+const XLSX = require('xlsx');
+
+const upload = multer({ dest: 'uploads/' }); // Store uploaded files in 'uploads/' folder
+
+
 const {
   createAutoLoanApplication,
   uploadData,
@@ -30,7 +37,8 @@ const {
 
 router.get("/getLoanfiledetailsbyfilenumber/:file_number", getLoanfiledetailsbyfilenumber);
 router.post("/createAutoLoanApplication", createAutoLoanApplication);
-router.post("/uploadData", uploadData);
+router.post("/uploadData", upload.single('file'), uploadData);
+
 router.get("/getfiledata/:mobile_number", getfiledata);
 router.post("/createLoanFileOverview", createLoanFileOverview);
 router.post("/createpersonaldetails/:file_number", createpersonadetails);

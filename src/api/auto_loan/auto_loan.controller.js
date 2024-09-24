@@ -9,8 +9,11 @@ const mongoose = require('mongoose'); // Ensure mongoose is imported
 const LoandataModel = require("../../model/loandata.model");
 const loanfilemodel = require('../../model/loan_file.model'); // Assuming your model is in the same folder
 const attachmentmodel = require('../../model/attachment.model'); // Assuming your model is in the same folder
-
-
+const express = require('express');
+const multer = require('multer');
+const XLSX = require('xlsx');
+const upload = multer({ dest: 'uploads/' }); // Store uploaded files in 'uploads/' folder
+const app = express();
 
 const processAndSaveAutoLoanApplication = async (data) => {
   try {
@@ -343,29 +346,38 @@ const generateFileNumber = async () => {
 };
 
 const uploadData = async (req, res) => {
-  const session = await mongoose.startSession(); // Start MongoDB session for transactions
-  session.startTransaction(); // Begin a transaction
-
   try {
     const data = req.body;
 
-    const batchSize = 500; // Adjust batch size (try larger sizes based on performance)
-    const totalBatches = Math.ceil(data.length / batchSize);
+    if (!Array.isArray(data) || data.length === 0) {
+      return res.status(400).json({ error: 'No data received' });
+    }
 
-    // Loop through the data in batches
-    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-      const batch = data.slice(batchIndex * batchSize, (batchIndex + 1) * batchSize);
+    // Helper function to generate a unique 5-digit file number
+    const generateFileNumber = async () => {
+      let fileNumber;
+      let exists = true;
 
-      // Prepare documents for batch insert
-      const overviewDocs = [];
-      const fileStatusDocs = [];
+      while (exists) {
+        // Generate a 5-digit random number
+        fileNumber = Math.floor(10000 + Math.random() * 90000).toString(); // Ensures a 5-digit number
 
-      for (let item of batch) {
-        const fileNumber = await generateFileNumber(); // Generate unique file number
+        // Check if this file number already exists
+        const fileExists = await overview_details.findOne({ file_number: fileNumber });
+        if (!fileExists) {
+          exists = false; // If no file exists with this number, exit the loop
+        }
+      }
 
-        const overviewDoc = {
-          file_number: fileNumber,
-          mobile_number: item["Customer Number"],
+      return fileNumber;
+    };
+
+    // Prepare data for database insertion with shared fileNumber
+    const overviewDocs = await Promise.all(data.map(async (item) => {
+      const fileNumber = await generateFileNumber(); // Generate unique file number for each record
+
+      return {
+        mobile_number: item["Customer Number"],
           previous_loan_bank_name: item["Bank Name"],
           previous_product_model: item["Product Name"],
           previous_loan_sanction_date: item["Loan Sanction Date"],
@@ -388,79 +400,115 @@ const uploadData = async (req, res) => {
           carDetails: item["Car Details"],
           model: item["Modal"],
           carNumber: item["Car Number"],
-        };
+        file_number: fileNumber // Attach generated file number
+      };
+    }));
 
-        const fileStatusDoc = {
-          file_number: fileNumber,
-          customer_name: item["Customer Name"],
-          customer_mobile_number: item["Customer Number"],
-          // Add default values for other fields if necessary
-        };
+    // Prepare data for the file status collection, reusing the same file numbers
+    const fileStatusDoc = overviewDocs.map((item) => ({
+      file_number: item.file_number, // Reuse the same file_number
+      customer_name: item.customer_name,
+      customer_mobile_number: item.mobile_number,
+    }));
 
-        // Push to arrays
-        overviewDocs.push(overviewDoc);
-        fileStatusDocs.push(fileStatusDoc);
-      }
+    // Bulk insert into the collections
+    await overview_details.insertMany(overviewDocs);
+    await loanfilemodel.insertMany(fileStatusDoc);
 
-      // Perform bulk inserts in parallel for both collections
-      await Promise.all([
-        overview_details.insertMany(overviewDocs, { session }), // Bulk insert for first collection
-        loanfilemodel.insertMany(fileStatusDocs, { session }), // Bulk insert for second collection
-      ]);
-
-      console.log(`Batch ${batchIndex + 1} processed successfully`);
-    }
-
-    // Commit the transaction
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(200).json({ message: 'Data stored successfully!' });
+    res.status(200).json({ message: 'Data successfully saved with unique file numbers' });
   } catch (error) {
-    console.error('Error in processing data:', error);
-
-    // Abort the transaction in case of error
-    await session.abortTransaction();
-    session.endSession();
-
-    res.status(500).json({ message: 'Failed to store data.' });
+    console.error(error);
+    return res.status(500).json({ error: 'An error occurred while saving the data' });
   }
 };
 
-// const uploadData= async (req, res) => {
+
+
+
+// const uploadData = async (req, res) => {
+//   const session = await mongoose.startSession(); // Start MongoDB session for transactions
+//   session.startTransaction(); // Begin a transaction
+
 //   try {
-//     const data = req.body;
+//     const data = req.body; // Receive the data from the request body
 
-//     // Validate and transform data if needed
-//     const transformedData = data.map((item) => ({
-//       customerName: item["Customer Name"],
-//       customerNumber: item["Customer Number"],
-//       productName: item["Product Name"],
-//       permanentAddress: item["Permanent address"],
-//       location: item["Location"],
-//       companyName: item["Company Name"],
-//       salary: item["Salary"],
-//       selfEmployee: item["Self Employee"],
-//       companyNumber: item["Company Number"],
-//       companyAddress: item["Company Address"],
-//       emailId: item["Email Id"],
-//       bankName: item["Bank Name"],
-//       tenure: item["tenure"],
-//       loanAmount: item["Loan Amount"],
-//       carName: item["Car Name"],
-//       model: item["Modal"],
-//       carNumber: item["Car Number"],
-//       insurance: item["Insurance"],
-//     }));
+//     // Validate the data format
+//     if (!Array.isArray(data) || data.length === 0) {
+//       return res.status(400).json({ message: 'Invalid data format. Expecting an array of objects.' });
+//     }
 
-//     // Save to database
-//     await uploadDatamodel.insertMany(transformedData);
-//     res.status(200).json({ message: 'Data stored successfully!' });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Failed to store data.' });
-//   }
+//     // Prepare documents for batch insert
+//     const overviewDocs = [];
+//     const fileStatusDocs = [];
+
+//     for (let item of data) {
+//       // Check if required fields are present
+//       if (!item["Customer Name"] || !item["Customer Number"]) {
+//         console.warn(`Skipping item due to missing required fields: ${JSON.stringify(item)}`);
+//         continue; // Skip this item if it doesn't have required fields
+//       }
+
+//       const fileNumber = await generateFileNumber(); // Generate unique file number
+
+//       const overviewDoc = {
+//         file_number: fileNumber,
+//         mobile_number: item["Customer Number"],
+//         previous_loan_bank_name: item["Bank Name"] || null,
+//         previous_product_model: item["Product Name"] || null,
+//         previous_loan_sanction_date: item["Loan Sanction Date"] || null,
+//         customer_name: item["Customer Name"],
+//         previous_loan_type: item["Loan Type"] || null,
+//         previous_loan_amount: item["Loan Amount"] || null,
+//         previous_loan_insurance_value: item["Loan Insurance Value"] || null,
+//         previous_loan_insurance_bank_name: item["Loan Insurance Bank Name"] || null,
+//         permanentAddress: item["Permanent address"] || null,
+//         location: item["Location"] || null,
+//         city: item["City"] || null,
+//         companyName: item["Company Name"] || null,
+//         salary: item["Salary"] || null,
+//         selfEmployee: item["Self Employee"] || null,
+//         companyNumber: item["Company Number"] || null,
+//         companyAddress: item["Company Address"] || null,
+//         emailId: item["Email Id"] || null,
+//         tenure: item["tenure"] || null,
+//         carName: item["Car Name"] || null,
+//         carDetails: item["Car Details"] || null,
+//         model: item["Modal"] || null,
+//         carNumber: item["Car Number"] || null,
+//       };
+
+//       const fileStatusDoc = {
+//         file_number: fileNumber,
+//         customer_name: item["Customer Name"],
+//         customer_mobile_number: item["Customer Number"],
+//         // Add default values for other fields if necessary
+//       };
+
+//       // Push to arrays
+//       overviewDocs.push(overviewDoc);
+//       fileStatusDocs.push(fileStatusDoc);
+//     }
+
+//      await Promise.all([
+//             overview_details.insertMany(overviewDocs, { session }),
+//             loanfilemodel.insertMany(fileStatusDocs, { session }),
+//         ]);
+
+//         await session.commitTransaction();
+//         res.status(200).json({ message: 'Data stored successfully!' });
+//     } catch (error) {
+//         console.error('Error in processing data:', error);
+//         await session.abortTransaction();
+//         res.status(500).json({ message: 'Failed to store data.' });
+//     } finally {
+//         session.endSession();
+//     }
 // };
+
+
+
+
+
 
 const getfiledata = async (req, res) => {
   const { mobile_number } = req.params;
@@ -1049,6 +1097,7 @@ const getLoanFilesByUserId = async (req, res) => {
     const { userId } = req.params; 
     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
 
+    // Find the user by userId
     const userRecord = await user.findOne({ userId: sanitizedUserId });
     if (!userRecord) {
       return res.status(404).json({
@@ -1058,6 +1107,8 @@ const getLoanFilesByUserId = async (req, res) => {
     }
 
     let query = {};
+
+    // Construct the query based on the user's role
     if (userRecord.role === 'sales') {
       query = { sales_agent_id: sanitizedUserId };
     } else if (userRecord.role === 'CDR') {
@@ -1065,16 +1116,20 @@ const getLoanFilesByUserId = async (req, res) => {
     } else if (userRecord.role === 'TVR') {
       query = { tvr_agent_id: sanitizedUserId };
     } else if (userRecord.role === 'admin') {
-      query = {}; // Admin gets all loan files
-    } 
-   else if (userRecord.role === 'Team leader') {
-    query = {}; // Admin gets all loan files
-  }
-  else if (userRecord.role === 'Bank login') {
-    query = {banklogin_agent_id: sanitizedUserId}; 
-  }
-    
-    else {
+      // Fetch loan files where sales_agent_id exists for admins
+      query = { 
+        sales_agent_id: { 
+          $exists: true, 
+          $ne: null, 
+          $not: /^\s*$/ // Matches non-blank values, excluding empty or whitespace-only fields
+        } 
+      };
+    } else if (userRecord.role === 'Team leader') {
+      // Fetch all loan files for team leaders (same as admin in this case)
+      query = {};
+    } else if (userRecord.role === 'Bank login') {
+      query = { banklogin_agent_id: sanitizedUserId };
+    } else {
       return res.status(400).json({
         success: false,
         message: `Invalid role for userId ${sanitizedUserId}`,
@@ -1091,21 +1146,21 @@ const getLoanFilesByUserId = async (req, res) => {
       });
     }
 
-
+    // Fetch additional loan details (type_of_loan) from personal details
     const filesWithLoanDetails = await Promise.all(
       loanFiles.map(async (file) => {
         const personalDetails = await personal_details_model.findOne({
           file_number: file.file_number
         });
 
-        // Include type_of_loan if found, or return null if not available
         return {
           ...file.toObject(),
           type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Available'
         };
       })
     );
-    // Return the loan files found
+
+    // Return the loan files with additional details
     return res.status(200).json({
       success: true,
       message: 'Records fetched successfully',
@@ -1120,6 +1175,7 @@ const getLoanFilesByUserId = async (req, res) => {
     });
   }
 };
+
 
 const admindashboardcount = async (req, res) => {
   try {

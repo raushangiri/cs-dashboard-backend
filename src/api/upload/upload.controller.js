@@ -142,9 +142,58 @@ const uploadFile = async (req, res) => {
       }
     };
   
+
+    async function deleteFileFromFirebase(documentUrl) {
+      const fileName = documentUrl.split('/o/')[1].split('?')[0]; // Extract filename from the documentUrl
+      const deleteUrl = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${encodeURIComponent(fileName)}`;
+  
+      try {
+          const response = await axios.delete(deleteUrl, {
+              headers: {
+                  Authorization: `Bearer ${API_KEY}`, // Replace with the correct Firebase auth token if needed
+              },
+          });
+  
+          if (response.status === 204) {
+              console.log('File deleted successfully from Firebase.');
+          } else {
+              console.log('Failed to delete file from Firebase.');
+          }
+      } catch (error) {
+          console.error('Error deleting file from Firebase:', error.response ? error.response.data : error.message);
+          throw new Error('Failed to delete file from Firebase.');
+      }
+  }
+
+  const deleteFileFromFtp = async (filePath) => {
+    const client = new ftp.Client();
+    client.ftp.timeout = 30000;
+    try {
+        await client.access({
+            host: '100.212.213.251',
+            user: 'Server',
+            password: 'jbj@0007',
+            secure: false,
+        });
+
+        console.log('Connected to the FTP server');
+        await client.remove(filePath); // Provide the relative path of the file to delete
+        console.log(`File ${filePath} deleted successfully from the FTP server`);
+    } catch (err) {
+        console.error('Error deleting file from FTP:', err);
+        throw new Error('Failed to delete file from FTP.');
+    } finally {
+        client.close();
+    }
+};
+
   
 
 
 
-module.exports = { uploadFileToFirebase,uploadFile };
-
+module.exports = {
+  uploadFileToFirebase,
+  uploadFile,
+  deleteFileFromFirebase,
+  deleteFileFromFtp,
+};

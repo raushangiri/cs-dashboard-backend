@@ -55,8 +55,7 @@ const DispositionSchema = new Schema({
   },
   file_status: {
     type: String,
-    required: true,
-    default:"details_not_completed"
+    default:""
   },
  
   createdAt: {

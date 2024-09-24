@@ -31,7 +31,8 @@ const {
   getSalesTeamLoanFiles,
   getProcessToBankloginFiles,
   getLoanfiledetailsbyfilenumber,
-  getDispositionById
+  getDispositionById,
+  checkFileReassignStatus
 } = require("./auto_loan.controller");
 
 
@@ -47,6 +48,8 @@ router.post("/createreferencedetail/:file_number", createreferencedetail);
 router.get("/getreferencedetail/:file_number", getreferencedetail);
 router.post("/createdesposition", createdesposition);
 router.get("/getdesposition/:file_number", getdesposition);
+router.get("/checkFileReassignStatus/:file_number", checkFileReassignStatus);
+
 router.get("/getDispositionById/:_id", getDispositionById);
 router.post("/createLoandetails/:file_number", createLoandetails);
 router.get("/getLoandetails/:file_number", getLoandetails);

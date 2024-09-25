@@ -60,7 +60,9 @@ router.delete('/delete/ftp', async (req, res) => {
 });
 router.delete('/delete', async (req, res) => {
     try {
-        const documentUrl = req.body.documentUrl; // Document URL should be sent in the request body
+        const documentUrl = req.body.documentUrl;
+        
+        // Document URL should be sent in the request body
         await deleteFileFromFirebase(documentUrl);
         res.status(200).json({ message: 'File deleted successfully from Firebase' });
     } catch (error) {

@@ -1489,7 +1489,7 @@ const getProcessToCDRFiles = async (req, res) => {
     // Fetch all records where file_status is "process_to_cdr" and cdr_agent_id is an empty string
     const files = await loanfilemodel.find({
       file_status: 'process_to_cdr',
-      cdr_agent_id: ' ' // Correct empty string
+      cdr_agent_id: '' // Correct empty string
     }).lean();
 
     if (files.length === 0) {
@@ -1536,7 +1536,7 @@ const getProcessToCDRFiles = async (req, res) => {
 
       return {
         ...file,
-        sales_agent_name: salesAgentMap[file.sales_agent_id] || 'Unknown Agent',
+        // sales_agent_name: salesAgentMap[file.sales_agent_id] || 'Unknown Agent',
         type_of_loan,
         loan_category
       };

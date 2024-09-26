@@ -15,7 +15,8 @@ const XLSX = require('xlsx');
 const upload = multer({ dest: 'uploads/' }); // Store uploaded files in 'uploads/' folder
 const app = express();
 const moment = require('moment');
-
+const BankStatementmodel =require('../../model/bankStatement.model');
+const bankStatementModel = require("../../model/bankStatement.model");
 
 const processAndSaveAutoLoanApplication = async (data) => {
   try {
@@ -1296,6 +1297,113 @@ const admindashboardcount = async (req, res) => {
   }
 };
 
+const teamleaderdashboardcount = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Get the current date and first day of the current month
+    const currentDate = new Date();
+    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
+    // Find all users who report to the given userId
+    const reportingUsers = await user.find({ reportingTo: userId }).select('userId');
+    const userIds = reportingUsers.map(user => user.userId);
+
+    // Add the main userId to the list of userIds
+    userIds.push(userId);
+
+    // Get the count of loan files created by users whose sales_agent_id matches any of the userIds
+    const mtdFileCount = await loanfilemodel.countDocuments({
+      sales_agent_id: { $in: userIds },
+      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+    });
+
+    // Aggregate to count total loan files created within the current month by status and user
+    const loanFileAggregation = await loanfilemodel.aggregate([
+      {
+        $match: {
+          sales_agent_id: { $in: userIds },
+          createdAt: { $gte: firstDayOfMonth, $lte: currentDate },
+          $or: [
+            { sales_status: { $in: ['Interested'] } },
+            { tvr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
+            { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
+            { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          interestedCount: { $sum: { $cond: [{ $eq: ['$sales_status', 'Interested'] }, 1, 0] } },
+          tvrCompleted: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Completed'] }, 1, 0] } },
+          tvrPending: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Pending'] }, 1, 0] } },
+          tvrRejected: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Rejected'] }, 1, 0] } },
+          cdrCompleted: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Completed'] }, 1, 0] } },
+          cdrPending: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Pending'] }, 1, 0] } },
+          cdrRejected: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Rejected'] }, 1, 0] } },
+          bankloginCompleted: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Completed'] }, 1, 0] } },
+          bankloginPending: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Pending'] }, 1, 0] } },
+          bankloginRejected: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Rejected'] }, 1, 0] } }
+        }
+      }
+    ]);
+
+    // Extract the first document from the aggregation result or initialize with default values
+    const loanFileCount = loanFileAggregation[0] || {
+      interestedCount:0,
+      tvrCompleted: 0,
+      tvrPending: 0,
+      tvrRejected: 0,
+      cdrCompleted: 0,
+      cdrPending: 0,
+      cdrRejected: 0,
+      bankloginCompleted: 0,
+      bankloginPending: 0,
+      bankloginRejected: 0
+    };
+
+    // Count loan files marked as Interested for users whose sales_agent_id matches any of the userIds
+    const interestedCount = await loanfilemodel.countDocuments({
+      sales_agent_id: { $in: userIds },
+      sales_status: 'Interested',
+      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+    });
+
+    // Count dispositions marked as NotInterested for users whose sales_agent_id matches any of the userIds
+    const notInterestedCount = await dispositionmodel.countDocuments({
+      userId: { $in: userIds },
+      is_interested: 'NotInterested',
+      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+    });
+
+    // Send the response with the aggregated data
+    res.status(200).json({
+      success: true,
+      message: 'Counts fetched for the current month',
+      loanFileCount: mtdFileCount, // Total loan file documents count within the current month
+      interestedCount, // Count of Interested loan files
+      notInterestedCount, // Count of Not Interested dispositions
+      tvrCompleted: loanFileCount.tvrCompleted,
+      tvrPending: loanFileCount.tvrPending,
+      tvrRejected: loanFileCount.tvrRejected,
+      cdrCompleted: loanFileCount.cdrCompleted,
+      cdrPending: loanFileCount.cdrPending,
+      cdrRejected: loanFileCount.cdrRejected,
+      bankloginCompleted: loanFileCount.bankloginCompleted,
+      bankloginPending: loanFileCount.bankloginPending,
+      bankloginRejected: loanFileCount.bankloginRejected
+    });
+  } catch (error) {
+    console.error('Error fetching document counts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch document counts',
+      error: error.message,
+    });
+  }
+};
+
 
 const getDocumentsCountByUserId = async (req, res) => {
   try {
@@ -1562,7 +1670,7 @@ const getProcessToBankloginFiles = async (req, res) => {
     // Fetch all records where file_status is "process_to_cdr" and cdr_agent_id is an empty string
     const files = await loanfilemodel.find({
       file_status: 'process_to_login_team',
-      banklogin_agent_id: ' ' // Correct empty string
+      banklogin_agent_id: '' // Correct empty string
     }).lean();
 
     if (files.length === 0) {
@@ -1736,7 +1844,65 @@ const getSalesTeamLoanFiles = async (req, res) => {
   }
 };
 
+const createbankStatement= async (req, res) => {
+  try {
+    const {
+      file_number,
+      userId,
+      bankAccountNumber,
+      totalAB,
+      totalABB,
+      oneYearABB,
+      sixMonthABB,
+      months
+    } = req.body;
 
+    // Create a new bank statement entry
+    const newBankStatement = new BankStatementmodel({
+      file_number,
+      userId,
+      bankAccountNumber,
+      totalAB,
+      totalABB,
+      oneYearABB,
+      sixMonthABB,
+      months
+    });
+
+    // Save to the database
+    await newBankStatement.save();
+
+    res.status(201).json({
+      message: 'Bank statement saved successfully',
+      data: newBankStatement
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error saving bank statement',
+      error: error.message
+    });
+  }
+};
+
+
+const getbankStatement=async (req, res) => {
+  try {
+    const { file_number } = req.params;
+
+    // Fetch data from the bankStatementModel collection
+    const bankStatementData = await BankStatementmodel.find({ file_number:file_number });
+
+    if (!bankStatementData) {
+      return res.status(404).json({ message: 'Bank statement not found' });
+    }
+
+    // Return the retrieved data
+    return res.status(200).json(bankStatementData);
+  } catch (error) {
+    console.error('Error fetching bank statement:', error);
+    return res.status(500).json({ message: 'Server error', error });
+  }
+};
 
 
 module.exports = {
@@ -1764,5 +1930,9 @@ module.exports = {
   getProcessToBankloginFiles,
   getLoanfiledetailsbyfilenumber,
   getDispositionById,
-  checkFileReassignStatus
+  checkFileReassignStatus,
+teamleaderdashboardcount,
+createbankStatement,
+getbankStatement
+  
 };

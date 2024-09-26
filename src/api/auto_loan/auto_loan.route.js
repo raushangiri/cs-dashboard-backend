@@ -32,7 +32,10 @@ const {
   getProcessToBankloginFiles,
   getLoanfiledetailsbyfilenumber,
   getDispositionById,
-  checkFileReassignStatus
+  checkFileReassignStatus,
+  teamleaderdashboardcount,
+  createbankStatement,
+  getbankStatement
 } = require("./auto_loan.controller");
 
 
@@ -54,6 +57,8 @@ router.get("/getDispositionById/:_id", getDispositionById);
 router.post("/createLoandetails/:file_number", createLoandetails);
 router.get("/getLoandetails/:file_number", getLoandetails);
 router.get("/getdashboardcount/:userId", getDocumentsCountByUserId);
+router.get("/teamleaderdashboardcount/:userId", teamleaderdashboardcount);
+
 router.get("/getLoanFilesByUserId/:userId", getLoanFilesByUserId);
 router.get("/admindashboardcount", admindashboardcount);
 router.get("/getAllLoanFiles", getAllLoanFiles);
@@ -64,6 +69,9 @@ router.get("/getProcessToBankloginFiles", getProcessToBankloginFiles);
 router.post("/updatedocumentdata", updatedocumentdata);
 router.get("/getdocumentdata/:file_number", getdocumentdata);
 router.get("/getSalesTeamLoanFiles/:userId", getSalesTeamLoanFiles);
+router.post("/createbankStatement", createbankStatement);
+router.get("/getbankStatement/:file_number", getbankStatement);
+
 
 
 

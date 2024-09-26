@@ -35,7 +35,8 @@ const {
   checkFileReassignStatus,
   teamleaderdashboardcount,
   createbankStatement,
-  getbankStatement
+  getbankStatement,
+  getLoanFilesByFilters
 } = require("./auto_loan.controller");
 
 
@@ -71,6 +72,7 @@ router.get("/getdocumentdata/:file_number", getdocumentdata);
 router.get("/getSalesTeamLoanFiles/:userId", getSalesTeamLoanFiles);
 router.post("/createbankStatement", createbankStatement);
 router.get("/getbankStatement/:file_number", getbankStatement);
+router.get("/getLoanFilesByFilters", getLoanFilesByFilters);
 
 
 

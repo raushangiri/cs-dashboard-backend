@@ -1125,8 +1125,6 @@ const getLoanfiledetailsbyfilenumber = async (req, res) => {
   }
 };
 
-
-
 const getLoanFilesByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -1151,12 +1149,8 @@ const getLoanFilesByUserId = async (req, res) => {
     } else if (userRecord.role === 'TVR') {
       query = { tvr_agent_id: sanitizedUserId };
     } else if (userRecord.role === 'admin') {
-      // Fetch loan files where sales_agent_id exists for admins
-      query = {
-        sales_status: "Interested"
-      };
+      query = { sales_status: "Interested" };
     } else if (userRecord.role === 'Team leader') {
-      // Fetch all loan files for team leaders (same as admin in this case)
       query = {};
     } else if (userRecord.role === 'Bank login') {
       query = { banklogin_agent_id: sanitizedUserId };
@@ -1177,16 +1171,36 @@ const getLoanFilesByUserId = async (req, res) => {
       });
     }
 
-    // Fetch additional loan details (type_of_loan) from personal details
+    // Fetch additional loan details and team leader name
     const filesWithLoanDetails = await Promise.all(
       loanFiles.map(async (file) => {
+        // Fetch the type of loan from personal details
         const personalDetails = await personal_details_model.findOne({
-          file_number: file.file_number
+          file_number: file.file_number,
         });
 
+        // Get the sales_agent_id from loanfile
+        const salesAgentId = file.sales_agent_id;
+
+        let teamLeaderName = 'Not Available';
+        if (salesAgentId) {
+          // Find the user associated with sales_agent_id to get reportingTo
+          const salesAgent = await user.findOne({ userId: salesAgentId });
+
+          if (salesAgent && salesAgent.reportingTo) {
+            // Find the team leader by the reportingTo value
+            const teamLeader = await user.findOne({ userId: salesAgent.reportingTo });
+            if (teamLeader) {
+              teamLeaderName = teamLeader.name;
+            }
+          }
+        }
+
+        // Return the loan file with additional details including team leader name
         return {
           ...file.toObject(),
-          type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Available'
+          type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Updated',
+          teamleadername: teamLeaderName
         };
       })
     );
@@ -1195,7 +1209,7 @@ const getLoanFilesByUserId = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Records fetched successfully',
-      data: filesWithLoanDetails
+      data: filesWithLoanDetails,
     });
   } catch (error) {
     console.error('Error fetching loan files:', error);
@@ -1208,20 +1222,105 @@ const getLoanFilesByUserId = async (req, res) => {
 };
 
 
+// const getLoanFilesByUserId = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+//     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
+
+//     // Find the user by userId
+//     const userRecord = await user.findOne({ userId: sanitizedUserId });
+//     if (!userRecord) {
+//       return res.status(404).json({
+//         success: false,
+//         message: `User not found with userId ${sanitizedUserId}`,
+//       });
+//     }
+
+//     let query = {};
+
+//     // Construct the query based on the user's role
+//     if (userRecord.role === 'sales') {
+//       query = { sales_agent_id: sanitizedUserId };
+//     } else if (userRecord.role === 'CDR') {
+//       query = { cdr_agent_id: sanitizedUserId };
+//     } else if (userRecord.role === 'TVR') {
+//       query = { tvr_agent_id: sanitizedUserId };
+//     } else if (userRecord.role === 'admin') {
+//       // Fetch loan files where sales_agent_id exists for admins
+//       query = {
+//         sales_status: "Interested"
+//       };
+//     } else if (userRecord.role === 'Team leader') {
+//       // Fetch all loan files for team leaders (same as admin in this case)
+//       query = {};
+//     } else if (userRecord.role === 'Bank login') {
+//       query = { banklogin_agent_id: sanitizedUserId };
+//     } else {
+//       return res.status(400).json({
+//         success: false,
+//         message: `Invalid role for userId ${sanitizedUserId}`,
+//       });
+//     }
+
+//     // Fetch loan files based on the constructed query
+//     const loanFiles = await loanfilemodel.find(query).sort({ createdAt: -1 });
+
+//     if (loanFiles.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: `No loan files found for userId ${sanitizedUserId}`,
+//       });
+//     }
+
+//     // Fetch additional loan details (type_of_loan) from personal details
+//     const filesWithLoanDetails = await Promise.all(
+//       loanFiles.map(async (file) => {
+//         const personalDetails = await personal_details_model.findOne({
+//           file_number: file.file_number
+//         });
+
+//         return {
+//           ...file.toObject(),
+//           type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Updated'
+//         };
+//       })
+//     );
+
+//     // Return the loan files with additional details
+//     return res.status(200).json({
+//       success: true,
+//       message: 'Records fetched successfully',
+//       data: filesWithLoanDetails
+//     });
+//   } catch (error) {
+//     console.error('Error fetching loan files:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Failed to fetch loan files',
+//       error: error.message,
+//     });
+//   }
+// };
+
 const admindashboardcount = async (req, res) => {
   try {
-    // Get the current date and first day of the current month
-    const currentDate = new Date();
-    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    // Extract the startDate and endDate from the query parameters
+    const { startDate, endDate } = req.query;
 
+    // If startDate or endDate is not provided, default to the first day and the current day of the month
+    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const end = endDate ? new Date(new Date(endDate).setHours(23, 59, 59)) : new Date();
+
+    // Count loan files created within the date range
     const mtdFileCount = await loanfilemodel.countDocuments({
-      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+      createdAt: { $gte: start, $lte: end }
     });
-    // Aggregate to count total loan files created within the current month by status
+
+    // Aggregate to count total loan files created within the date range by status
     const loanFileAggregation = await loanfilemodel.aggregate([
       {
         $match: {
-          createdAt: { $gte: firstDayOfMonth, $lte: currentDate },
+          createdAt: { $gte: start, $lte: end },
           $or: [
             { tvr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
             { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
@@ -1258,23 +1357,23 @@ const admindashboardcount = async (req, res) => {
       bankloginRejected: 0
     };
 
-    // Count loan files marked as Interested within the current month
-    const interestedCount = await dispositionmodel.countDocuments({
-      is_interested: 'Interested',
-      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+    // Count loan files marked as Interested within the date range
+    const interestedCount = await loanfilemodel.countDocuments({
+      sales_status: 'Interested',
+      sales_assign_date: { $gte: start, $lte: end }
     });
 
-    // Count dispositions marked as NotInterested within the current month
+    // Count dispositions marked as NotInterested within the date range
     const notInterestedCount = await dispositionmodel.countDocuments({
       is_interested: 'NotInterested',
-      createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+      createdAt: { $gte: start, $lte: end }
     });
 
     // Send the response with the aggregated data
     res.status(200).json({
       success: true,
-      message: 'Counts fetched for the current month',
-      loanFileCount: mtdFileCount, // Total loan file documents count within the current month
+      message: 'Counts fetched successfully',
+      loanFileCount: mtdFileCount, // Total loan file documents count within the date range
       interestedCount, // Count of Interested loan files
       notInterestedCount, // Count of Not Interested dispositions
       tvrCompleted: loanFileCount.tvrCompleted,
@@ -1296,6 +1395,95 @@ const admindashboardcount = async (req, res) => {
     });
   }
 };
+
+// const admindashboardcount = async (req, res) => {
+//   try {
+//     // Get the current date and first day of the current month
+//     const currentDate = new Date();
+//     const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+
+//     const mtdFileCount = await loanfilemodel.countDocuments({
+//       createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+//     });
+//     // Aggregate to count total loan files created within the current month by status
+//     const loanFileAggregation = await loanfilemodel.aggregate([
+//       {
+//         $match: {
+//           createdAt: { $gte: firstDayOfMonth, $lte: currentDate },
+//           $or: [
+//             { tvr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
+//             { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
+//             { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } }
+//           ]
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           tvrCompleted: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Completed'] }, 1, 0] } },
+//           tvrPending: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Pending'] }, 1, 0] } },
+//           tvrRejected: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Rejected'] }, 1, 0] } },
+//           cdrCompleted: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Completed'] }, 1, 0] } },
+//           cdrPending: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Pending'] }, 1, 0] } },
+//           cdrRejected: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Rejected'] }, 1, 0] } },
+//           bankloginCompleted: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Completed'] }, 1, 0] } },
+//           bankloginPending: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Pending'] }, 1, 0] } },
+//           bankloginRejected: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Rejected'] }, 1, 0] } }
+//         }
+//       }
+//     ]);
+
+//     // Extract the first document from the aggregation result or initialize with default values
+//     const loanFileCount = loanFileAggregation[0] || {
+//       tvrCompleted: 0,
+//       tvrPending: 0,
+//       tvrRejected: 0,
+//       cdrCompleted: 0,
+//       cdrPending: 0,
+//       cdrRejected: 0,
+//       bankloginCompleted: 0,
+//       bankloginPending: 0,
+//       bankloginRejected: 0
+//     };
+
+//     // Count loan files marked as Interested within the current month
+//     const interestedCount = await dispositionmodel.countDocuments({
+//       is_interested: 'Interested',
+//       createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+//     });
+
+//     // Count dispositions marked as NotInterested within the current month
+//     const notInterestedCount = await dispositionmodel.countDocuments({
+//       is_interested: 'NotInterested',
+//       createdAt: { $gte: firstDayOfMonth, $lte: currentDate }
+//     });
+
+//     // Send the response with the aggregated data
+//     res.status(200).json({
+//       success: true,
+//       message: 'Counts fetched for the current month',
+//       loanFileCount: mtdFileCount, // Total loan file documents count within the current month
+//       interestedCount, // Count of Interested loan files
+//       notInterestedCount, // Count of Not Interested dispositions
+//       tvrCompleted: loanFileCount.tvrCompleted,
+//       tvrPending: loanFileCount.tvrPending,
+//       tvrRejected: loanFileCount.tvrRejected,
+//       cdrCompleted: loanFileCount.cdrCompleted,
+//       cdrPending: loanFileCount.cdrPending,
+//       cdrRejected: loanFileCount.cdrRejected,
+//       bankloginCompleted: loanFileCount.bankloginCompleted,
+//       bankloginPending: loanFileCount.bankloginPending,
+//       bankloginRejected: loanFileCount.bankloginRejected
+//     });
+//   } catch (error) {
+//     console.error('Error fetching document counts:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to fetch document counts',
+//       error: error.message,
+//     });
+//   }
+// };
 
 const teamleaderdashboardcount = async (req, res) => {
   try {
@@ -1904,6 +2092,123 @@ const getbankStatement=async (req, res) => {
   }
 };
 
+const getLoanFilesByFilters = async (req, res) => {
+  try {
+    const { date, teamLeader, agentName } = req.query;
+
+    // Build the query object based on provided filters
+    let query = {};
+
+    if (date) {
+      const formattedDate = new Date(date).toISOString().split('T')[0]; // YYYY-MM-DD format
+      query.sales_assign_date = {
+        $gte: new Date(`${formattedDate}T00:00:00.000Z`),
+        $lte: new Date(`${formattedDate}T23:59:59.999Z`)
+      };
+    }
+
+    // Fetch filtered loan files from the database
+    const loanFiles = await loanfilemodel.find(query);
+
+    if (loanFiles.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No loan files found for the selected filters',
+      });
+    }
+
+    // Get unique sales_agent_ids
+    const salesAgentIds = [...new Set(loanFiles.map(file => file.sales_agent_id))];
+
+    // Fetch users whose userId matches salesAgentIds
+    const users = await user.find({ userId: { $in: salesAgentIds } }, 'userId name reportingTo'); // Fetch userId, name, and reportingTo fields
+
+    // Create a mapping of sales_agent_id to name and reportingTo user IDs
+    const salesAgentMap = {};
+    users.forEach(user => {
+      salesAgentMap[user.userId] = {
+        name: user.name,
+        reportingTo: user.reportingTo
+      };
+    });
+
+    // Create an array of reportingTo user IDs
+    const reportingToIds = users.map(user => user.reportingTo).filter(Boolean); // Filter out any undefined values
+
+    // Fetch reportingTo users' names from User collection based on reportingTo user IDs
+    const reportingToUsers = await user.find({ userId: { $in: reportingToIds } }, 'userId name'); // Fetch userId and name fields
+
+    // Create a mapping of reportingTo user ID to name
+    const reportingToNameMap = {};
+    reportingToUsers.forEach(user => {
+      reportingToNameMap[user.userId] = user.name; // Assuming name is the field for the user's name
+    });
+
+    // Initialize response structure for each sales agent
+    const response = salesAgentIds.map(agentId => {
+      const loanFilesForAgent = loanFiles.filter(file => file.sales_agent_id === agentId);
+
+      // Count records for each status for the current sales agent
+      const salesInterestedCount = loanFilesForAgent.filter(file => file.sales_status === 'Interested').length;
+      const salesNotInterestedCount = loanFilesForAgent.filter(file => file.sales_status === 'Not Interested').length;
+      const sales_assign_date = loanFilesForAgent.sales_assign_date;
+
+
+      const tvrPendingCount = loanFilesForAgent.filter(file => file.tvr_status === 'Pending').length;
+      const tvrCompletedCount = loanFilesForAgent.filter(file => file.tvr_status === 'Completed').length;
+
+      const cdrPendingCount = loanFilesForAgent.filter(file => file.cdr_status === 'Pending').length;
+      const cdrCompletedCount = loanFilesForAgent.filter(file => file.cdr_status === 'Completed').length;
+
+      const bankLoginCount = loanFilesForAgent.filter(file => file.banklogin_status === 'Completed').length;
+
+      const approvalPendingCount = loanFilesForAgent.filter(file => file.approval_status === 'Pending').length;
+      const approvalCompletedCount = loanFilesForAgent.filter(file => file.approval_status === 'Completed').length;
+
+      const disbursalPendingCount = loanFilesForAgent.filter(file => file.disbursal_status === 'Pending').length;
+      const disbursalCompletedCount = loanFilesForAgent.filter(file => file.disbursal_status === 'Completed').length;
+
+      // Prepare the details for this sales agent
+      return {
+
+        sales_agent_id: agentId,
+        sales_agent_name: salesAgentMap[agentId]?.name || 'Unknown',
+        teamLeaderName: reportingToNameMap[salesAgentMap[agentId]?.reportingTo] || 'Unknown',
+        interested: salesInterestedCount,
+        notInterested: salesNotInterestedCount,
+        tvrPending: tvrPendingCount,
+        tvrCompleted: tvrCompletedCount,
+        cdrPending: cdrPendingCount,
+        cdrCompleted: cdrCompletedCount,
+        bankLogin: bankLoginCount,
+        approvalPending: approvalPendingCount,
+        approvalCompleted: approvalCompletedCount,
+        disbursalPending: disbursalPendingCount,
+        disbursalCompleted: disbursalCompletedCount,
+        date:loanFilesForAgent[0].sales_assign_date
+      };
+    });
+
+    // Return the aggregated data for each sales agent
+    return res.status(200).json({
+      success: true,
+      message: 'Loan files fetched and status counts calculated successfully',
+      data: response, // Return the response for each sales agent
+    });
+  } catch (error) {
+    console.error('Error fetching loan files:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch loan files',
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
 
 module.exports = {
   createAutoLoanApplication,
@@ -1933,6 +2238,7 @@ module.exports = {
   checkFileReassignStatus,
 teamleaderdashboardcount,
 createbankStatement,
-getbankStatement
+getbankStatement,
+getLoanFilesByFilters
   
 };

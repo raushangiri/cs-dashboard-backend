@@ -1609,6 +1609,7 @@ const getDocumentsCountByUserId = async (req, res) => {
 
     // If startDate and endDate are provided, adjust them to cover the entire day
     const dateFilter = {};
+    const dispositiondateFilter = {};
     if (startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
@@ -1617,6 +1618,7 @@ const getDocumentsCountByUserId = async (req, res) => {
       end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
 
       dateFilter.sales_assign_date = { $gte: start, $lte: end };
+      dispositiondateFilter.createdAt= { $gte: start, $lte: end };
     }
 
     // Count total loan files created by the user
@@ -1636,7 +1638,7 @@ const getDocumentsCountByUserId = async (req, res) => {
     const notInterestedCount = await dispositionmodel.countDocuments({
       userId: sanitizedUserId,
       is_interested: 'NotInterested',
-      ...dateFilter // Apply date filter here
+      ...dispositiondateFilter // Apply date filter here
     });
 
     const statusCounts = await loanfilemodel.aggregate([
@@ -1807,6 +1809,7 @@ const getCdrDocumentsCountByUserId = async (req, res) => {
       end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
 
       dateFilter.cdr_assign_date = { $gte: start, $lte: end };
+
     }
 
     // Count total loan files created by the user

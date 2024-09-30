@@ -38,7 +38,8 @@ const {
   getbankStatement,
   getLoanFilesByFilters,
   getTvrDocumentsCountByUserId,
-  getCdrDocumentsCountByUserId
+  getCdrDocumentsCountByUserId,
+  getteamleaderperformance
 } = require("./auto_loan.controller");
 
 
@@ -79,6 +80,7 @@ router.get("/getSalesTeamLoanFiles/:userId", getSalesTeamLoanFiles);
 router.post("/createbankStatement", createbankStatement);
 router.get("/getbankStatement/:file_number", getbankStatement);
 router.get("/getLoanFilesByFilters", getLoanFilesByFilters);
+router.get("/getteamleaderperformance/:userId", getteamleaderperformance);
 
 
 

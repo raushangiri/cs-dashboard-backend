@@ -1,7 +1,13 @@
 const bank_details = require("../../model/bank.model");
 const documents = require("../../model/document.model");
 const banklogin_details = require("../../model/banklogin.model");
+const nodemailer = require('nodemailer');
+const path = require('path');
+const fs = require('fs');
+const https = require('https');
 
+const fileUrl = 'https://firebasestorage.googleapis.com/v0/b/jbj-fintech.appspot.com/o/eel_api_docs.xlsx?alt=media';
+const filePath = './document.pdf';
 
 const get_rmDetails = async (req, res) => {
   try {
@@ -177,6 +183,152 @@ const getbanklogindetails = async (req, res) => {
   }
 };
 
+// const sendEmailWithAttachment = async (req, res) => {
+//   try {
+//     // Extract user details and document link from the request body
+//     const { email, subject, text, attachmentUrl, userName, userPhone } = req.body;
+
+//     // Create a transporter (this is using Gmail; adjust for your service)
+//     let transporter = nodemailer.createTransport({
+//       service: 'gmail',
+//       auth: {
+//         user: process.env.EMAIL_USERNAME, // Your email address
+//         pass: process.env.EMAIL_PASSWORD, // Your email password or app password if 2FA is on
+//       },
+//     });
+
+//     // Define the email options
+//     let mailOptions = {
+//       from: `"Your App Name" <${process.env.EMAIL_USERNAME}>`, // Sender address
+//       to: email, // Receiver's email address
+//       subject: subject || 'Document Attached', // Email subject
+//       text: text || `Hello, please find the attached document for review.`, // Email body text
+//       html: `<p>Dear ${userName},</p><p>Please find the attached document. You can contact me at ${userPhone} for any further queries.</p>`, // Email body with HTML
+//       attachments: [
+//         {
+//           filename: 'document.pdf', // Name of the file to be attached
+//           path: attachmentUrl, // URL or path to the file to attach
+//         },
+//       ],
+//     };
+
+//     // Send email
+//     transporter.sendMail(mailOptions, (error, info) => {
+//       if (error) {
+//         console.log('Error sending email:', error);
+//         return res.status(500).json({ message: 'Error sending email', error });
+//       }
+//       console.log('Email sent successfully:', info.response);
+//       return res.status(200).json({ message: 'Email sent successfully', info });
+//     });
+//   } catch (error) {
+//     console.error('Error in sendEmailWithAttachment function:', error);
+//     return res.status(500).json({ message: 'Internal Server Error', error });
+//   }
+// };
+
+const downloadFile = (url, downloadPath) => {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(downloadPath);
+    https.get(url, (response) => {
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close(() => resolve(downloadPath));
+      });
+    }).on('error', (err) => {
+      fs.unlink(downloadPath, () => reject(err.message)); // Cleanup on error
+    });
+  });
+};
+
+// Helper function to send the email with attachments
+const sendEmailWithAttachment = (email, subject, text, attachments, cc) => {
+  return new Promise((resolve, reject) => {
+    let transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+
+    let mailOptions = {
+      from: process.env.EMAIL_USERNAME,
+      to: Array.isArray(email) ? email.join(", ") : email,  // Handles multiple recipients
+      cc: Array.isArray(cc) ? cc.join(", ") : cc,           // Handles multiple CC recipients
+      subject: subject,
+      text: text,
+      attachments: attachments.map(filePath => ({
+        filename: path.basename(filePath),
+        path: filePath,
+      })),
+    };
+
+    transporter.sendMail(mailOptions, (err, info) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve(info);
+    });
+  });
+};
+
+
+// API function (controller)
+// API function (controller)
+sendDocumentEmail = async (req, res) => {
+ 
+  const { email, subject, text, documentUrls, cc } = req.body;
+
+  // Ensure the required fields are present
+  if (!email || !subject || !text || !documentUrls || !documentUrls.length) {
+    return res.status(400).json({ error: 'All fields are required: email, subject, text, documentUrls' });
+  }
+
+  // Temporary file paths array for multiple attachments
+  const tempFilePaths = [];
+
+  try {
+    // Step 1: Download all documents
+    for (let i = 0; i < documentUrls.length; i++) {
+      const documentUrl = documentUrls[i];
+      const tempFilePath = path.join(__dirname, '../temp', `document_${i}.pdf`);
+      await downloadFile(documentUrl, tempFilePath);
+      tempFilePaths.push(tempFilePath); // Save the file path for attachment
+    }
+
+    // Step 2: Send the email with multiple attachments
+    const emailInfo = await sendEmailWithAttachment(email, subject, text, tempFilePaths, cc);
+
+    // Step 3: Clean up by removing the downloaded files
+    tempFilePaths.forEach(filePath => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+
+    // Success response
+    res.json({
+      message: 'Email sent successfully!',
+      info: emailInfo,
+    });
+  } catch (error) {
+    // Cleanup in case of failure
+    tempFilePaths.forEach(filePath => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+
+    // Error response
+    res.status(500).json({
+      error: 'Error sending email or downloading file',
+      details: error.message,
+    });
+  }
+};
+
+
 
 module.exports = {
     get_rmDetails,
@@ -184,5 +336,6 @@ module.exports = {
     getBankNames,
     getlist,
     createBankDetail,
-    getbanklogindetails
+    getbanklogindetails,
+    sendDocumentEmail
   };

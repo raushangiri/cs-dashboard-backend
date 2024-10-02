@@ -1,6 +1,7 @@
 const auto_loan_file = require("../../model/auto_loan_file.model");
 const personal_details_model = require('../../model/personaldetails.model');  // Your model
 const loanfilemodel = require('../../model/loan_file.model'); // Assuming your model is in the same folder
+const user = require('../../model/user.model'); // Assuming your model is in the same folder
 
 
 const typeofloanreport= async (req, res) => {
@@ -73,7 +74,33 @@ const typeofloanreport= async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+const getTeamLeadersAndReporters = async (req, res) => {
+  try {
+    // Step 1: Fetch all user IDs where role is 'Team Leader'
+    const teamLeaders = await user.find({ role: 'Team leader' }, 'userId'); // Fetch only the _id field
+    const teamLeaderIds = teamLeaders.map(leader => leader.userId); // Extract array of _id
+
+    // Step 2: Fetch all users who report to the team leaders
+    const reporters = await user.find({ reportingTo: { $in: teamLeaderIds } }, 'userId'); // Users reporting to team leaders
+    const reporterIds = reporters.map(reporter => reporter.userId); // Extract array of _id
+
+    // Step 3: Send response with both team leaders and reporters
+    return res.json({
+      success: true,
+      teamLeaderIds,
+      reporterIds,
+    });
+  } catch (error) {
+    console.error('Error fetching team leaders and reporters:', error);
+    return res.status(500).json({ error: 'Server error while fetching data' });
+  }
+};
+
+
 module.exports = {
     typeofloanreport,
-    pendingcount
+    pendingcount,
+    getTeamLeadersAndReporters
 }

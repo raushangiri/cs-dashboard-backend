@@ -99,8 +99,143 @@ const getTeamLeadersAndReporters = async (req, res) => {
 };
 
 
+const tvrreport= async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    // Ensure startDate and endDate are provided
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required.',
+      });
+    }
+
+    // Find loan files where tvr_agent_id exists and filter by tvr_assign_date within date range
+    const loanFiles = await loanfilemodel.find({
+      tvr_agent_id: { $exists: true, $ne: ""  },
+      tvr_assign_date: {
+        $gte: new Date(startDate), // Filter from startDate
+        $lte: new Date(endDate),   // Filter to endDate
+      },
+    }).select('customer_name customer_mobile_number tvr_agent_id tvr_status tvr_agent_name tvr_assign_date');
+
+    // Process each loan file to find team leader details
+    const result = await Promise.all(loanFiles.map(async (loanFile) => {
+      // Find the user (agent) with tvr_agent_id
+      const agent = await user.findOne({ userId: loanFile.tvr_agent_id });
+
+      // Find the team leader based on the reportingTo value
+      let teamLeader = null;
+      if (agent && agent.reportingTo) {
+        teamLeader = await user.findOne({ userId: agent.reportingTo });
+      }
+      const tvrAssignDate = new Date(loanFile.tvr_assign_date);
+      const date = tvrAssignDate.toLocaleDateString('Gn-US');
+
+// Extract the time (e.g., "10:30 AM")
+const time = tvrAssignDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+// console.log(date); // Outputs something like "10/3/2024"
+// console.log(time);
+      // Return loan file details along with team leader info
+      return {
+        teamleaderid: teamLeader ? teamLeader.userId : null,
+        teamleadername: teamLeader ? teamLeader.name : null,
+        tvr_agent_id: loanFile.tvr_agent_id,
+        tvr_agent_name: loanFile.tvr_agent_name,
+        tvr_status: loanFile.tvr_status,
+        customer_name: loanFile.customer_name,
+        customer_mobile_number: loanFile.customer_mobile_number,
+        tvr_assign_date:date,
+        time: time
+      };
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Error fetching loan files:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.',
+    });
+  }
+};
+
+const cdrreport= async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    // Ensure startDate and endDate are provided
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required.',
+      });
+    }
+
+    // Find loan files where tvr_agent_id exists and filter by tvr_assign_date within date range
+    const loanFiles = await loanfilemodel.find({
+      cdr_agent_id: { $exists: true, $ne: ""  },
+      cdr_assign_date: {
+        $gte: new Date(startDate), // Filter from startDate
+        $lte: new Date(endDate),   // Filter to endDate
+      },
+    }).select('customer_name customer_mobile_number cdr_agent_id cdr_status cdr_agent_name cdr_assign_date');
+
+    // Process each loan file to find team leader details
+    const result = await Promise.all(loanFiles.map(async (loanFile) => {
+      // Find the user (agent) with cdr_agent_id
+      const agent = await user.findOne({ userId: loanFile.cdr_agent_id });
+
+      // Find the team leader based on the reportingTo value
+      let teamLeader = null;
+      if (agent && agent.reportingTo) {
+        teamLeader = await user.findOne({ userId: agent.reportingTo });
+      }
+      const cdrAssignDate = new Date(loanFile.cdr_assign_date);
+      const date = cdrAssignDate.toLocaleDateString('Gn-US');
+
+// Extract the time (e.g., "10:30 AM")
+const time = cdrAssignDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+// console.log(date); // Outputs something like "10/3/2024"
+// console.log(time);
+      // Return loan file details along with team leader info
+      return {
+        teamleaderid: teamLeader ? teamLeader.userId : null,
+        teamleadername: teamLeader ? teamLeader.name : null,
+        cdr_agent_id: loanFile.cdr_agent_id,
+        cdr_agent_name: loanFile.cdr_agent_name,
+        cdr_status: loanFile.cdr_status,
+        customer_name: loanFile.customer_name,
+        customer_mobile_number: loanFile.customer_mobile_number,
+        cdr_assign_date:date,
+        time: time
+      };
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Error fetching loan files:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.',
+    });
+  }
+};
+
+
 module.exports = {
     typeofloanreport,
     pendingcount,
-    getTeamLeadersAndReporters
+    getTeamLeadersAndReporters,
+    tvrreport,
+    cdrreport
 }

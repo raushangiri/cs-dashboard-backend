@@ -2412,34 +2412,111 @@ const getdocumentdata = async (req, res) => {
   }
 };
 
+// const getSalesTeamLoanFiles = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+
+//     // Step 1: Find users where role is 'sales' and reportingTo is the userId from params
+//     const salesUsers = await user.find({ role: 'sales', reportingTo: userId }).lean();
+//     if (!salesUsers || salesUsers.length === 0) {
+//       return res.status(404).json({
+//         status: 404,
+//         message: 'No Team Assigned to User',
+//       });
+//     }
+
+//     // Step 2: Extract userIds from the fetched sales users
+//     const salesUserIds = salesUsers.map(salesUser => salesUser.userId); // Assuming userId is a field in the user model
+//     console.log(salesUserIds,"salesUserIds")
+
+//     // Step 3: Find loan files where sales_agent_id matches the salesUserIds
+//     const loanFiles = await loanfilemodel.find({ sales_agent_id: { $in: salesUserIds } }).lean();
+
+//     if (!loanFiles || loanFiles.length === 0) {
+//       return res.status(404).json({
+//         status: 404,
+//         message: 'No loan files found',
+//       });
+//     }
+
+//     // Step 4: Map sales agents' names to their respective loan files
+//     const loanFilesWithSalesAgent = loanFiles.map(loanFile => {
+//       const salesAgent = salesUsers.find(salesUser => salesUser.userId === loanFile.sales_agent_id);
+//       return {
+//         ...loanFile,
+//         sales_agent_name: salesAgent ? salesAgent.name : 'Unknown Agent', // Attach the sales agent's name
+//       };
+//     });
+
+//     // Step 5: Return the result
+//     return res.status(200).json({
+//       status: 200,
+//       message: `Loan files found for sales agents reporting to user with ID: ${userId}`,
+//       data: loanFilesWithSalesAgent,
+//     });
+
+//   } catch (err) {
+//     console.error('Error fetching loan files:', err);
+//     return res.status(500).json({
+//       status: 500,
+//       message: 'Internal server error',
+//       error: err.message,
+//     });
+//   }
+// };
+
+
 const getSalesTeamLoanFiles = async (req, res) => {
   try {
     const { userId } = req.params;
+    const { startDate, endDate, salesAgentName } = req.query;
 
     // Step 1: Find users where role is 'sales' and reportingTo is the userId from params
-    const salesUsers = await user.find({ role: 'sales', reportingTo: userId }).lean();
+    let salesQuery = { role: 'sales', reportingTo: userId };
+
+    // Apply sales agent name filter, if provided
+    if (salesAgentName) {
+      salesQuery.name = salesAgentName;
+    }
+
+    const salesUsers = await user.find(salesQuery).lean();
     if (!salesUsers || salesUsers.length === 0) {
       return res.status(404).json({
         status: 404,
-        message: 'No Team Assigned to User',
+        message: 'No Team Assigned to User or Sales Agent not found',
       });
     }
 
     // Step 2: Extract userIds from the fetched sales users
     const salesUserIds = salesUsers.map(salesUser => salesUser.userId); // Assuming userId is a field in the user model
-    console.log(salesUserIds,"salesUserIds")
 
-    // Step 3: Find loan files where sales_agent_id matches the salesUserIds
-    const loanFiles = await loanfilemodel.find({ sales_agent_id: { $in: salesUserIds } }).lean();
+    // Step 3: Build loan file query
+    let loanFileQuery = { sales_agent_id: { $in: salesUserIds } };
+
+    // Apply date range filter if provided
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0); // Start of the day
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // End of the day
+
+      loanFileQuery.sales_assign_date = {
+        $gte: start,
+        $lte: end
+      };
+    }
+
+    // Step 4: Find loan files where sales_agent_id matches the salesUserIds and the date range matches
+    const loanFiles = await loanfilemodel.find(loanFileQuery).lean();
 
     if (!loanFiles || loanFiles.length === 0) {
       return res.status(404).json({
         status: 404,
-        message: 'No loan files found',
+        message: 'No loan files found for the provided filters',
       });
     }
 
-    // Step 4: Map sales agents' names to their respective loan files
+    // Step 5: Map sales agents' names to their respective loan files
     const loanFilesWithSalesAgent = loanFiles.map(loanFile => {
       const salesAgent = salesUsers.find(salesUser => salesUser.userId === loanFile.sales_agent_id);
       return {
@@ -2448,7 +2525,7 @@ const getSalesTeamLoanFiles = async (req, res) => {
       };
     });
 
-    // Step 5: Return the result
+    // Step 6: Return the result
     return res.status(200).json({
       status: 200,
       message: `Loan files found for sales agents reporting to user with ID: ${userId}`,
@@ -2464,6 +2541,7 @@ const getSalesTeamLoanFiles = async (req, res) => {
     });
   }
 };
+
 
 const createbankStatement= async (req, res) => {
   try {
@@ -2940,7 +3018,7 @@ const getteamleaderLoanFilesByFilters = async (req, res) => {
     }
 
     // Fetch sales agent details if salesAgentName is provided
-    if (userId) {
+    if (salesAgentName) {
       const agents = await user.find({ reportingTo: userId }, 'userId'); // Fetch userIds matching the sales agent's name
       const agentIds = agents.map(agent => agent.userId);
 

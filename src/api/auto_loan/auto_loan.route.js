@@ -40,13 +40,15 @@ const {
   getTvrDocumentsCountByUserId,
   getCdrDocumentsCountByUserId,
   getteamleaderperformance,
-  getteamleaderLoanFilesByFilters
+  getteamleaderLoanFilesByFilters,
+  deletedocumentdata
 } = require("./auto_loan.controller");
 
 
 router.get("/getLoanfiledetailsbyfilenumber/:file_number", getLoanfiledetailsbyfilenumber);
 router.post("/createAutoLoanApplication", createAutoLoanApplication);
 router.post("/uploadData", upload.single('file'), uploadData);
+router.delete('/deleteDocument/:id', deletedocumentdata);
 
 router.get("/getfiledata/:mobile_number", getfiledata);
 router.post("/createLoanFileOverview", createLoanFileOverview);

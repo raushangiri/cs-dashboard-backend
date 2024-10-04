@@ -809,7 +809,7 @@ const createdesposition = async (req, res) => {
           
           updateNeeded = true;
         } else {
-          updateData.file_status = file_status;
+          // updateData.file_status = file_status;
           updateNeeded = true;
         }
         if (file_status === 'process_to_cdr') {
@@ -828,7 +828,7 @@ const createdesposition = async (req, res) => {
           
           updateNeeded = true;
         } else {
-          updateData.file_status = file_status;
+          // updateData.file_status = file_status;
           updateNeeded = true;
         }
         if (file_status === 'process_to_login_team') {
@@ -2387,6 +2387,34 @@ const updatedocumentdata = async (req, res) => {
   }
 };
 
+
+const deletedocumentdata = async (req, res) => {
+  try {
+    const { id } = req.params; // Get the _id from request parameters
+
+    if (!id) {
+      return res.status(400).json({ error: 'Document ID is required' });
+    }
+
+    // Find and delete the document by _id
+    const deletedAttachment = await attachmentmodel.findByIdAndDelete(id);
+
+    if (!deletedAttachment) {
+      return res.status(404).json({ error: 'Attachment not found' });
+    }
+
+    res.status(200).json({
+      message: 'Attachment deleted successfully',
+      attachment: deletedAttachment
+    });
+  } catch (error) {
+    console.error('Error deleting attachment:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+
 const getdocumentdata = async (req, res) => {
   try {
     const { file_number } = req.params;
@@ -3179,6 +3207,7 @@ createbankStatement,
 getbankStatement,
 getLoanFilesByFilters,
 getteamleaderperformance,
-getteamleaderLoanFilesByFilters
+getteamleaderLoanFilesByFilters,
+deletedocumentdata
   
 };

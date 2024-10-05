@@ -166,6 +166,7 @@ const uploadFile = async (req, res) => {
   }
 
   const deleteFileFromFtp = async (filePath) => {
+    console.log("api called")
     const client = new ftp.Client();
     client.ftp.timeout = 30000;
     try {

@@ -58,17 +58,37 @@ router.delete('/delete/ftp', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+// router.delete('/delete', async (req, res) => {
+//     try {
+//         const documentUrl = req.body.documentUrl;
+//         console.log(documentUrl,"documentUrl")
+//         // Document URL should be sent in the request body
+//         await deleteFileFromFirebase(documentUrl);
+//         res.status(200).json({ message: 'File deleted successfully from Firebase' });
+//     } catch (error) {
+//         res.status(500).json({ message: error.message });
+//     }
+// });
+
 router.delete('/delete', async (req, res) => {
     try {
-        const documentUrl = req.body.documentUrl;
-        
-        // Document URL should be sent in the request body
+        const { documentUrl } = req.body;  // Ensure documentUrl is retrieved correctly
+        console.log(documentUrl, "documentUrl received in backend");
+
+        // Check if documentUrl is valid
+        if (!documentUrl) {
+            return res.status(400).json({ message: 'Document URL is required' });
+        }
+
+        // Call your function to delete the file
         await deleteFileFromFirebase(documentUrl);
+
         res.status(200).json({ message: 'File deleted successfully from Firebase' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 router.post('/upload', upload.single('file'), async (req, res) => {
     try {

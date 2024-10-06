@@ -15,7 +15,7 @@ const XLSX = require('xlsx');
 const upload = multer({ dest: 'uploads/' }); // Store uploaded files in 'uploads/' folder
 const app = express();
 const moment = require('moment');
-const BankStatementmodel =require('../../model/bankStatement.model');
+const BankStatementmodel = require('../../model/bankStatement.model');
 const bankStatementModel = require("../../model/bankStatement.model");
 
 const processAndSaveAutoLoanApplication = async (data) => {
@@ -806,7 +806,7 @@ const createdesposition = async (req, res) => {
           updateData.tvr_agent_name = userdetails.name
 
           updateData.file_status = file_status;
-          
+
           updateNeeded = true;
         } else {
           // updateData.file_status = file_status;
@@ -825,7 +825,7 @@ const createdesposition = async (req, res) => {
           updateData.cdr_agent_name = userdetails.name
 
           updateData.file_status = file_status;
-          
+
           updateNeeded = true;
         } else {
           // updateData.file_status = file_status;
@@ -844,10 +844,16 @@ const createdesposition = async (req, res) => {
           updateData.banklogin_agent_name = userdetails.name
           updateData.banklogin_status = file_status;
           updateData.file_status = file_status;
-          
+
           updateNeeded = true;
         } else {
           updateData.file_status = file_status;
+          updateNeeded = true;
+        }
+        if (file_status === 'bank_login_approved') {
+          updateData.approval_status = 'Pending';
+          updateData.banklogin_assign_date = new Date();
+          updateData.banklogin_status = 'Completed';
           updateNeeded = true;
         }
         break;
@@ -1351,25 +1357,43 @@ const getLoanFilesByUserId = async (req, res) => {
 
     // Apply date range filter if provided
     if (startDate && endDate) {
-
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-      
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-
-      query.sales_assign_date = { $gte: start, $lte: end };
-      // dispositiondateFilter.createdAt= { $gte: start, $lte: end };
-      // query.sales_assign_date = { 
-      //   $gte: new Date(startDate), 
-      //   $lte: new Date(endDate) 
-      // };
+      if (userRecord.role === 'sales') {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.sales_assign_date = { $gte: start, $lte: end };
+      }
+      else if (userRecord.role === 'TVR') {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.tvr_assign_date = { $gte: start, $lte: end };
+        
+      }
+      else if (userRecord.role === 'CDR') {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.cdr_assign_date = { $gte: start, $lte: end };
+        
+      }
+      else if (userRecord.role === 'Bank login') {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.banklogin_assign_date = { $gte: start, $lte: end };
+        
+      }
     }
 
     // if (startDate && endDate) {
     //   const start = new Date(startDate);
     //   start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-      
+
     //   const end = new Date(endDate);
     //   end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
 
@@ -1378,7 +1402,7 @@ const getLoanFilesByUserId = async (req, res) => {
     // }
 
     // Fetch loan files based on the constructed query
-    let loanFiles = await loanfilemodel.find(query).sort({ sales_assign_date: -1 });
+    let loanFiles = await loanfilemodel.find(query);
 
     // Apply sales agent name filter if provided
     if (salesAgentName) {
@@ -1650,11 +1674,11 @@ const teamleaderdashboardcount = async (req, res) => {
     // Find all users who report to the given userId
     const reportingUsers = await user.find({ reportingTo: userId }).select('userId');
     const userIds = reportingUsers.map(user => user.userId);
-// console.log(userIds);
+    // console.log(userIds);
 
-  const userdata = await user.findOne({ userId });
+    const userdata = await user.findOne({ userId });
 
-  
+
     // Add the main userId to the list of userIds
     userIds.push(userId);
 
@@ -1766,12 +1790,12 @@ const getDocumentsCountByUserId = async (req, res) => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-      
+
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
 
       dateFilter.sales_assign_date = { $gte: start, $lte: end };
-      dispositiondateFilter.createdAt= { $gte: start, $lte: end };
+      dispositiondateFilter.createdAt = { $gte: start, $lte: end };
     }
 
     // Count total loan files created by the user
@@ -1866,7 +1890,7 @@ const getTvrDocumentsCountByUserId = async (req, res) => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-      
+
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
 
@@ -1957,7 +1981,7 @@ const getCdrDocumentsCountByUserId = async (req, res) => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-      
+
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
 
@@ -1983,7 +2007,7 @@ const getCdrDocumentsCountByUserId = async (req, res) => {
         $match: {
           cdr_agent_id: sanitizedUserId,
           $or: [
-            
+
             { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
             { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } }
           ],
@@ -2004,7 +2028,7 @@ const getCdrDocumentsCountByUserId = async (req, res) => {
     ]);
 
     const statusCountData = statusCounts[0] || {
-      
+
       cdrCompleted: 0,
       cdrPending: 0,
       cdrRejected: 0,
@@ -2045,7 +2069,7 @@ const getBankDocumentsCountByUserId = async (req, res) => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-      
+
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
 
@@ -2071,7 +2095,7 @@ const getBankDocumentsCountByUserId = async (req, res) => {
         $match: {
           banklogin_agent_id: sanitizedUserId,
           $or: [
-            
+
             { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
             { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } }
           ],
@@ -2081,7 +2105,7 @@ const getBankDocumentsCountByUserId = async (req, res) => {
       {
         $group: {
           _id: null,
-         
+
           bankloginCompleted: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Completed'] }, 1, 0] } },
           bankloginPending: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Pending'] }, 1, 0] } },
           bankloginRejected: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Rejected'] }, 1, 0] } }
@@ -2090,8 +2114,8 @@ const getBankDocumentsCountByUserId = async (req, res) => {
     ]);
 
     const statusCountData = statusCounts[0] || {
-      
-      
+
+
       bankloginCompleted: 0,
       bankloginPending: 0,
       bankloginRejected: 0
@@ -2571,7 +2595,7 @@ const getSalesTeamLoanFiles = async (req, res) => {
 };
 
 
-const createbankStatement= async (req, res) => {
+const createbankStatement = async (req, res) => {
   try {
     const {
       file_number,
@@ -2612,12 +2636,12 @@ const createbankStatement= async (req, res) => {
 };
 
 
-const getbankStatement=async (req, res) => {
+const getbankStatement = async (req, res) => {
   try {
     const { file_number } = req.params;
 
     // Fetch data from the bankStatementModel collection
-    const bankStatementData = await BankStatementmodel.find({ file_number:file_number });
+    const bankStatementData = await BankStatementmodel.find({ file_number: file_number });
 
     if (!bankStatementData) {
       return res.status(404).json({ message: 'Bank statement not found' });
@@ -2910,7 +2934,7 @@ const getteamleaderperformance = async (req, res) => {
 
     // Find all users who report to the given userId
     const usersReportingTo = await user.find({ reportingTo: userId }, 'userId name reportingTo');
-    console.log(usersReportingTo,"usersReportingTo")
+    console.log(usersReportingTo, "usersReportingTo")
 
     // If no users are found, return an empty response
     if (usersReportingTo.length === 0) {
@@ -3202,12 +3226,12 @@ module.exports = {
   getLoanfiledetailsbyfilenumber,
   getDispositionById,
   checkFileReassignStatus,
-teamleaderdashboardcount,
-createbankStatement,
-getbankStatement,
-getLoanFilesByFilters,
-getteamleaderperformance,
-getteamleaderLoanFilesByFilters,
-deletedocumentdata
-  
+  teamleaderdashboardcount,
+  createbankStatement,
+  getbankStatement,
+  getLoanFilesByFilters,
+  getteamleaderperformance,
+  getteamleaderLoanFilesByFilters,
+  deletedocumentdata
+
 };

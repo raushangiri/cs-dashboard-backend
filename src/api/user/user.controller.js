@@ -231,6 +231,42 @@ console.log(userdata,"2954")
   }
 };
 
+const resetPassword = async (req, res) => {
+  try {
+    // Step 1: Retrieve userId from request parameters
+    const { userId } = req.params;
+
+    // Step 2: Find the user by userId in the database
+    const userdata = await user.findOne({ userId:userId });
+
+    if (!userdata) {
+      return res.status(400).send({ message: "User not found", status: 400 });
+    }
+
+    // Step 3: Convert userId into password format
+    // You can adjust the complexity of this conversion logic as needed.
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(userId, salt); // Using userId as the password source
+
+    // Step 4: Update the user's password and hasResetPassword flag
+    userdata.password = hashedNewPassword;
+    userdata.hasChangedPassword = false;  // Mark as password reset
+
+    // Step 5: Save the updated user data in the database
+    await userdata.save();
+
+    // Return success response
+    return res.status(200).send({
+      message: "Password has been reset successfully",
+      status: 200,
+    });
+  } catch (error) {
+    // Handle any server error
+    return res.status(500).send({ message: error.message, status: 500 });
+  }
+};
+
+
 const findteamleader = async (req, res) => {
   try {
     const teamLeaders = await user.find(
@@ -397,7 +433,7 @@ module.exports = {
   createuser1,
   login,
   changePassword,
-  // resetPassword,
+  resetPassword,
   getalluser,
   deleteUser,
   findteamleader,

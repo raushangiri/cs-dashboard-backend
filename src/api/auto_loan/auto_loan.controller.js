@@ -818,6 +818,10 @@ const createdesposition = async (req, res) => {
           updateData.tvr_status = 'Completed';
           updateNeeded = true;
         }
+        if (file_status === 'tvr_rejected') {
+          updateData.tvr_status = 'Rejected';
+          updateNeeded = true;
+        }
         break;
       case 'CDR':
         if (!loanFile.cdr_agent_id.trim()) {
@@ -837,6 +841,10 @@ const createdesposition = async (req, res) => {
           updateData.cdr_status = 'Completed';
           updateNeeded = true;
         }
+        if (file_status === 'cdr_rejected') {
+          updateData.cdr_status = 'Rejected';
+          updateNeeded = true;
+        }
         break;
       case 'Bank login':
         if (!loanFile.banklogin_agent_id.trim()) {
@@ -854,6 +862,10 @@ const createdesposition = async (req, res) => {
           updateData.approval_status = 'Pending';
           updateData.banklogin_assign_date = new Date();
           updateData.banklogin_status = 'Completed';
+          updateNeeded = true;
+        }
+        if (file_status === 'bank_login_rejected') {
+          updateData.banklogin_status = 'Rejected';
           updateNeeded = true;
         }
         break;

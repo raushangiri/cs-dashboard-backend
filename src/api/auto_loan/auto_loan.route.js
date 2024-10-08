@@ -41,7 +41,8 @@ const {
   getCdrDocumentsCountByUserId,
   getteamleaderperformance,
   getteamleaderLoanFilesByFilters,
-  deletedocumentdata
+  deletedocumentdata,
+  viewbankStatement
 } = require("./auto_loan.controller");
 
 
@@ -49,7 +50,6 @@ router.get("/getLoanfiledetailsbyfilenumber/:file_number", getLoanfiledetailsbyf
 router.post("/createAutoLoanApplication", createAutoLoanApplication);
 router.post("/uploadData", upload.single('file'), uploadData);
 router.delete('/deleteDocument/:id', deletedocumentdata);
-
 router.get("/getfiledata/:mobile_number", getfiledata);
 router.post("/createLoanFileOverview", createLoanFileOverview);
 router.post("/createpersonaldetails/:file_number", createpersonadetails);
@@ -59,32 +59,27 @@ router.get("/getreferencedetail/:file_number", getreferencedetail);
 router.post("/createdesposition", createdesposition);
 router.get("/getdesposition/:file_number", getdesposition);
 router.get("/checkFileReassignStatus/:file_number", checkFileReassignStatus);
-
 router.get("/getDispositionById/:_id", getDispositionById);
 router.post("/createLoandetails/:file_number", createLoandetails);
 router.get("/getLoandetails/:file_number", getLoandetails);
 router.get("/getdashboardcount/:userId", getDocumentsCountByUserId);
 router.get("/getTvrDocumentsCountByUserId/:userId", getTvrDocumentsCountByUserId);
 router.get("/getCdrDocumentsCountByUserId/:userId", getCdrDocumentsCountByUserId);
-
-
 router.get("/teamleaderdashboardcount/:userId", teamleaderdashboardcount);
-
 router.get("/getLoanFilesByUserId/:userId", getLoanFilesByUserId);
 router.get("/admindashboardcount", admindashboardcount);
 router.get("/getAllLoanFiles", getAllLoanFiles);
 router.get("/getProcessToTVRFiles", getProcessToTVRFiles);
 router.get("/getProcessToCDRFiles", getProcessToCDRFiles);
 router.get("/getProcessToBankloginFiles", getProcessToBankloginFiles);
-
 router.post("/updatedocumentdata", updatedocumentdata);
 router.get("/getdocumentdata/:file_number", getdocumentdata);
 router.get("/getSalesTeamLoanFiles/:userId", getSalesTeamLoanFiles);
 router.post("/createbankStatement", createbankStatement);
 router.get("/getbankStatement/:file_number", getbankStatement);
+router.get("/viewbankStatement/:id", viewbankStatement);
 router.get("/getLoanFilesByFilters", getLoanFilesByFilters);
 router.get("/getteamleaderLoanFilesByFilters", getteamleaderLoanFilesByFilters);
-
 router.get("/getteamleaderperformance/:userId", getteamleaderperformance);
 
 

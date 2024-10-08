@@ -2667,6 +2667,26 @@ const getbankStatement = async (req, res) => {
   }
 };
 
+const viewbankStatement = async (req, res) => {
+  try {
+    const { id } = req.params; 
+    const bankStatementData = await BankStatementmodel.findById(id);
+
+    if (!bankStatementData) {
+      return res.status(404).json({ message: 'Bank statement not found' });
+    }
+
+    // Return the retrieved data
+    return res.status(200).json(bankStatementData);
+  } catch (error) {
+    console.error('Error fetching bank statement:', error);
+    return res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+
+
+
 // const getLoanFilesByFilters = async (req, res) => {
 //   try {
 //     const { date, teamLeader, agentName } = req.query;
@@ -3244,6 +3264,7 @@ module.exports = {
   getLoanFilesByFilters,
   getteamleaderperformance,
   getteamleaderLoanFilesByFilters,
-  deletedocumentdata
+  deletedocumentdata,
+  viewbankStatement
 
 };

@@ -425,7 +425,6 @@ const uploadData = async (req, res) => {
   }
 };
 
-
 // const uploadData = async (req, res) => {
 //   const session = await mongoose.startSession(); // Start MongoDB session for transactions
 //   session.startTransaction(); // Begin a transaction
@@ -599,6 +598,7 @@ const createpersonadetails = async (req, res) => {
     gst_and_itr_income,
     inhand_salary,
     other_income,
+    note
   } = req.body;
 
   try {
@@ -639,6 +639,7 @@ const createpersonadetails = async (req, res) => {
           gst_and_itr_income,
           inhand_salary,
           other_income,
+          note
         }
       },
       { new: true, upsert: true }  // Options: new returns the updated document, upsert creates if not found
@@ -896,7 +897,6 @@ const createdesposition = async (req, res) => {
 };
 
 
-
 const checkFileReassignStatus = async (req, res) => {
   try {
     const { file_number } = req.params;
@@ -953,9 +953,6 @@ const checkFileReassignStatus = async (req, res) => {
     });
   }
 };
-
-
-
 
 
 // const createdesposition = async (req, res) => {
@@ -1788,8 +1785,6 @@ const teamleaderdashboardcount = async (req, res) => {
   }
 };
 
-
-
 const getDocumentsCountByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -2069,7 +2064,6 @@ const getCdrDocumentsCountByUserId = async (req, res) => {
   }
 };
 
-
 const getBankDocumentsCountByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -2152,7 +2146,6 @@ const getBankDocumentsCountByUserId = async (req, res) => {
     });
   }
 };
-
 
 const getAllLoanFiles = async (req, res) => {
   try {
@@ -2247,7 +2240,6 @@ const getProcessToTVRFiles = async (req, res) => {
     });
   }
 };
-
 
 const getProcessToCDRFiles = async (req, res) => {
   try {
@@ -2423,7 +2415,6 @@ const updatedocumentdata = async (req, res) => {
   }
 };
 
-
 const deletedocumentdata = async (req, res) => {
   try {
     const { id } = req.params; // Get the _id from request parameters
@@ -2448,8 +2439,6 @@ const deletedocumentdata = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
-
-
 
 const getdocumentdata = async (req, res) => {
   try {
@@ -2606,7 +2595,6 @@ const getSalesTeamLoanFiles = async (req, res) => {
   }
 };
 
-
 const createbankStatement = async (req, res) => {
   try {
     const {
@@ -2647,7 +2635,6 @@ const createbankStatement = async (req, res) => {
   }
 };
 
-
 const getbankStatement = async (req, res) => {
   try {
     const { file_number } = req.params;
@@ -2683,8 +2670,6 @@ const viewbankStatement = async (req, res) => {
     return res.status(500).json({ message: 'Server error', error });
   }
 };
-
-
 
 
 // const getLoanFilesByFilters = async (req, res) => {

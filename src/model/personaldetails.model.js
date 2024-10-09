@@ -140,7 +140,10 @@ const personaldata_schema = new mongoose.Schema(
         type: String,
         default:""
     },
-    
+    note:{
+        type:String,
+        default:""
+    }
   },
   {
     timestamps: {

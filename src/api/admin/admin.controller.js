@@ -72,7 +72,7 @@ const gettvrFilesByDate = async (req, res) => {
               teamleaderuserid: null,
               tvr_agent_id:null,
               tvr_agent_name:"Unassigned",
-              type_of_loan:loanfiledata.type_of_loan
+              // type_of_loan:loanfiledata.type_of_loan
 
             };
           }
@@ -90,7 +90,7 @@ const gettvrFilesByDate = async (req, res) => {
                 ...loanFile.toObject(),  // Convert Mongoose document to plain object
                 teamleadername: teamLeader.name,
                 teamleaderuserid: teamLeader.userId,
-                type_of_loan:loanfiledata.type_of_loan
+                
               };
             }
           }
@@ -99,7 +99,7 @@ const gettvrFilesByDate = async (req, res) => {
             ...loanFile.toObject(),
             teamleadername: "Unassigned",
             teamleaderuserid: null,
-            type_of_loan:loanfiledata.type_of_loan
+            // type_of_loan:loanfiledata.type_of_loan
           };
         })
       );
@@ -113,6 +113,7 @@ const gettvrFilesByDate = async (req, res) => {
     res.status(500).json({ status: 500, message: 'Server error', error: error.message });
   }
 };
+
 const getcdrFilesByDate = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;

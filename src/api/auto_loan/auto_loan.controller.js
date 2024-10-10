@@ -810,7 +810,7 @@ const createdesposition = async (req, res) => {
 
           updateNeeded = true;
         } else {
-          // updateData.file_status = file_status;
+          updateData.file_status = file_status;
           updateNeeded = true;
         }
         if (file_status === 'process_to_cdr') {
@@ -2635,6 +2635,54 @@ const createbankStatement = async (req, res) => {
   }
 };
 
+const updateBankStatement = async (req, res) => {
+  try {
+    const { _id } = req.params; // Get the ID from params
+    const {
+      file_number,
+      userId,
+      bankAccountNumber,
+      totalAB,
+      totalABB,
+      oneYearABB,
+      sixMonthABB,
+      months
+    } = req.body; // Get the fields from the request body
+
+    // Find the bank statement by its ID and update it
+    const updatedBankStatement = await BankStatementmodel.findByIdAndUpdate(
+      _id,
+      {
+        file_number,
+        userId,
+        bankAccountNumber,
+        totalAB,
+        totalABB,
+        oneYearABB,
+        sixMonthABB,
+        months
+      },
+      { new: true } // To return the updated document
+    );
+
+    if (!updatedBankStatement) {
+      return res.status(404).json({ message: 'Bank statement not found' });
+    }
+
+    res.status(200).json({
+      message: 'Bank statement updated successfully',
+      data: updatedBankStatement
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error updating bank statement',
+      error: error.message
+    });
+  }
+};
+
+
+
 const getbankStatement = async (req, res) => {
   try {
     const { file_number } = req.params;
@@ -3250,6 +3298,7 @@ module.exports = {
   getteamleaderperformance,
   getteamleaderLoanFilesByFilters,
   deletedocumentdata,
-  viewbankStatement
+  viewbankStatement,
+  updateBankStatement
 
 };

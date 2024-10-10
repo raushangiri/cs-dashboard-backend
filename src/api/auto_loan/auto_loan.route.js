@@ -42,7 +42,8 @@ const {
   getteamleaderperformance,
   getteamleaderLoanFilesByFilters,
   deletedocumentdata,
-  viewbankStatement
+  viewbankStatement,
+  updateBankStatement
 } = require("./auto_loan.controller");
 
 
@@ -81,7 +82,7 @@ router.get("/viewbankStatement/:id", viewbankStatement);
 router.get("/getLoanFilesByFilters", getLoanFilesByFilters);
 router.get("/getteamleaderLoanFilesByFilters", getteamleaderLoanFilesByFilters);
 router.get("/getteamleaderperformance/:userId", getteamleaderperformance);
-
+router.put('/updateBankStatement/:_id', updateBankStatement);
 
 
 

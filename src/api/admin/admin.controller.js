@@ -64,14 +64,14 @@ const gettvrFilesByDate = async (req, res) => {
         loanFiles.map(async (loanFile) => {
           const loanfiledata = await personal_details_model.findOne({ file_number: loanFile.file_number });
 
-          // If there's no tvr_agent_id, return "Unassigned" for agent name and proceed
+          // If there's no tvr_agent_id, return "Pending" for agent name and proceed
           if (!loanFile.tvr_agent_id) {
             return {
               ...loanFile.toObject(),
               teamleadername: null,
               teamleaderuserid: null,
               tvr_agent_id:null,
-              tvr_agent_name:"Unassigned",
+              tvr_agent_name:"Pending",
               // type_of_loan:loanfiledata.type_of_loan
 
             };
@@ -97,7 +97,7 @@ const gettvrFilesByDate = async (req, res) => {
           // If no team leader is found, return loan file with agent's information
           return {
             ...loanFile.toObject(),
-            teamleadername: "Unassigned",
+            teamleadername: "Pending",
             teamleaderuserid: null,
             // type_of_loan:loanfiledata.type_of_loan
           };
@@ -142,14 +142,14 @@ const getcdrFilesByDate = async (req, res) => {
         loanFiles.map(async (loanFile) => {
           const loanfiledata = await personal_details_model.findOne({ file_number: loanFile.file_number });
 
-          // If there's no tvr_agent_id, return "Unassigned" for agent name and proceed
+          // If there's no tvr_agent_id, return "Pending" for agent name and proceed
           if (!loanFile.cdr_agent_id) {
             return {
               ...loanFile.toObject(),
               teamleadername: null,
               teamleaderuserid: null,
               cdr_agent_id:null,
-              cdr_agent_name:"Unassigned",
+              cdr_agent_name:"Pending",
               type_of_loan:loanfiledata.type_of_loan
 
             };
@@ -175,7 +175,7 @@ const getcdrFilesByDate = async (req, res) => {
           // If no team leader is found, return loan file with agent's information
           return {
             ...loanFile.toObject(),
-            teamleadername: "Unassigned",
+            teamleadername: "Pending",
             teamleaderuserid: null,
             type_of_loan:loanfiledata.type_of_loan
           };
@@ -220,14 +220,14 @@ const getbankloginFilesByDate = async (req, res) => {
         loanFiles.map(async (loanFile) => {
           const loanfiledata = await personal_details_model.findOne({ file_number: loanFile.file_number });
 
-          // If there's no tvr_agent_id, return "Unassigned" for agent name and proceed
+          // If there's no tvr_agent_id, return "Pending" for agent name and proceed
           if (!loanFile.banklogin_agent_id) {
             return {
               ...loanFile.toObject(),
               teamleadername: null,
               teamleaderuserid: null,
               banklogin_agent_id:null,
-              banklogin_agent_name:"Unassigned",
+              banklogin_agent_name:"Pending",
               type_of_loan:loanfiledata.type_of_loan
 
             };
@@ -253,7 +253,7 @@ const getbankloginFilesByDate = async (req, res) => {
           // If no team leader is found, return loan file with agent's information
           return {
             ...loanFile.toObject(),
-            teamleadername: "Unassigned",
+            teamleadername: "Pending",
             teamleaderuserid: null,
             type_of_loan:loanfiledata.type_of_loan
           };
@@ -393,7 +393,7 @@ const gettvrperformanceByFilters = async (req, res) => {
       // Prepare the details for this sales agent
       return {
         tvr_agent_id: agentId,
-        tvr_agent_name: tvrAgentMap[agentId]?.name || 'Unassigned',
+        tvr_agent_name: tvrAgentMap[agentId]?.name || 'Pending',
         teamLeaderName: reportingToNameMap[tvrAgentMap[agentId]?.reportingTo] || '',
        
         tvrPending: tvrPendingCount,
@@ -543,7 +543,7 @@ const getcdrperformanceByFilters = async (req, res) => {
       // Prepare the details for this sales agent
       return {
         cdr_agent_id: agentId,
-        cdr_agent_name: cdrAgentMap[agentId]?.name || 'Unassigned',
+        cdr_agent_name: cdrAgentMap[agentId]?.name || 'Pending',
         teamLeaderName: reportingToNameMap[cdrAgentMap[agentId]?.reportingTo] || '',
        
       
@@ -693,7 +693,7 @@ const getbankloginperformanceByFilters = async (req, res) => {
       // Prepare the details for this sales agent
       return {
         banklogin_agent_id: agentId,
-        banklogin_agent_name: bankloginAgentMap[agentId]?.name || 'Unassigned',
+        banklogin_agent_name: bankloginAgentMap[agentId]?.name || 'Pending',
         teamLeaderName: reportingToNameMap[bankloginAgentMap[agentId]?.reportingTo] || '',
         bankLoginCompleted: bankLoginCompletedCount,
         bankLoginPending: bankLoginPendingCount,

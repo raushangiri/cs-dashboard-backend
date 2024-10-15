@@ -1886,37 +1886,132 @@ const getDocumentsCountByUserId = async (req, res) => {
   }
 };
 
+// const getTvrDocumentsCountByUserId = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+//     const { startDate, endDate } = req.query; // Fetch start and end date from query params
+//     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
+//     // If startDate and endDate are provided, adjust them to cover the entire day
+//     const dateFilter = {};
+//     if (startDate && endDate) {
+//       const start = new Date(startDate);
+//       start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+//       console.log("start",start)
+
+//       const end = new Date(endDate);
+//       end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
+//       console.log("end",end)
+
+//       dateFilter.tvr_assign_date = { $gte: start, $lte: end };
+//     }
+
+//     // Count total loan files created by the user
+//     const loanFileCount = await loanfilemodel.countDocuments({
+//       tvr_agent_id: sanitizedUserId,
+//       ...dateFilter // Apply date filter here
+//     });
+
+//     // Count of Interested loan files
+//     const tvrCount = await loanfilemodel.countDocuments({
+//       tvr_agent_id: sanitizedUserId,
+//       tvr_status: 'Completed',
+//       ...dateFilter // Apply date filter here
+//     });
+
+//     const statusCounts = await loanfilemodel.aggregate([
+//       {
+//         $match: {
+//           tvr_agent_id: sanitizedUserId,
+//           $or: [
+//             { tvr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
+//             { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
+//             { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } }
+//           ],
+//           ...dateFilter // Apply date filter here
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           tvrCompleted: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Completed'] }, 1, 0] } },
+//           tvrPending: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Pending'] }, 1, 0] } },
+//           tvrRejected: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Rejected'] }, 1, 0] } },
+//           cdrCompleted: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Completed'] }, 1, 0] } },
+//           cdrPending: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Pending'] }, 1, 0] } },
+//           cdrRejected: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Rejected'] }, 1, 0] } },
+//           bankloginCompleted: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Completed'] }, 1, 0] } },
+//           bankloginPending: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Pending'] }, 1, 0] } },
+//           bankloginRejected: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Rejected'] }, 1, 0] } }
+//         }
+//       }
+//     ]);
+
+//     const statusCountData = statusCounts[0] || {
+//       tvrCompleted: 0,
+//       tvrPending: 0,
+//       tvrRejected: 0,
+//       cdrCompleted: 0,
+//       cdrPending: 0,
+//       cdrRejected: 0,
+//       bankloginCompleted: 0,
+//       bankloginPending: 0,
+//       bankloginRejected: 0
+//     };
+
+//     const userdata = await user.findOne({ userId: sanitizedUserId });
+
+//     res.status(200).json({
+//       success: true,
+//       message: `Counts fetched for userId ${sanitizedUserId}`,
+//       loanFileCount,
+//       tvrCount,
+//       username: userdata?.name || '',
+//       ...statusCountData
+//     });
+//   } catch (error) {
+//     console.error('Error fetching document counts:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to fetch document counts',
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 const getTvrDocumentsCountByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
     const { startDate, endDate } = req.query; // Fetch start and end date from query params
+
     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
 
-    // If startDate and endDate are provided, adjust them to cover the entire day
+    // Prepare date filters if startDate and endDate are provided
     const dateFilter = {};
     if (startDate && endDate) {
       const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-
+      start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day
       const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
+      end.setHours(23, 59, 59, 999); // Set endDate to the end of the day
 
-      dateFilter.tvr_assign_date = { $gte: start, $lte: end };
+      dateFilter.tvr_assign_date = { $gte: start, $lte: end }; // Filter by tvr_assign_date field
     }
 
-    // Count total loan files created by the user
+    // Count total loan files created by the user (filter by userId and date range)
     const loanFileCount = await loanfilemodel.countDocuments({
       tvr_agent_id: sanitizedUserId,
       ...dateFilter // Apply date filter here
     });
+    console.log(sanitizedUserId,"sanitizedUserId")
 
-    // Count of Interested loan files
+    // Count of Completed loan files
     const tvrCount = await loanfilemodel.countDocuments({
       tvr_agent_id: sanitizedUserId,
       tvr_status: 'Completed',
       ...dateFilter // Apply date filter here
     });
 
+    // Aggregate counts based on various status fields (tvr_status, cdr_status, banklogin_status)
     const statusCounts = await loanfilemodel.aggregate([
       {
         $match: {
@@ -1945,6 +2040,7 @@ const getTvrDocumentsCountByUserId = async (req, res) => {
       }
     ]);
 
+    // Prepare default status count data if aggregation result is empty
     const statusCountData = statusCounts[0] || {
       tvrCompleted: 0,
       tvrPending: 0,
@@ -1957,8 +2053,10 @@ const getTvrDocumentsCountByUserId = async (req, res) => {
       bankloginRejected: 0
     };
 
+    // Fetch user data to get the user's name (optional)
     const userdata = await user.findOne({ userId: sanitizedUserId });
 
+    // Return the result with counts and user details
     res.status(200).json({
       success: true,
       message: `Counts fetched for userId ${sanitizedUserId}`,

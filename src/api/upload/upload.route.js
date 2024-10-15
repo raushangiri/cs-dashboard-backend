@@ -43,9 +43,9 @@ const { uploadFileToFirebase,
     uploadFile,
     deleteFileFromFirebase,
     deleteFileFromFtp, } = require('./upload.controller');
-
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // Store file in memory for easier handling
+const { v4: uuidv4 } = require('uuid');
 
 router.post("/uploadFile", uploadFile);
 
@@ -90,6 +90,42 @@ router.delete('/delete', async (req, res) => {
 });
 
 
+// router.post('/upload', upload.single('file'), async (req, res) => {
+//     try {
+//         // Check if a file is provided
+//         if (!req.file) {
+//             return res.status(400).json({ error: 'No file uploaded.' });
+//         }
+
+//         const tempDir = path.join(__dirname, 'temp');
+//         const tempFilePath = path.join(tempDir, req.file.originalname); // Temporary file path
+
+//         // Ensure the temp directory exists
+//         if (!fs.existsSync(tempDir)) {
+//             fs.mkdirSync(tempDir); // Create the directory if it doesn't exist
+//         }
+
+//         // Write the file buffer to the temp folder
+//         fs.writeFileSync(tempFilePath, req.file.buffer);
+
+//         // Upload the file to Firebase Storage
+//         const uploadResult = await uploadFileToFirebase(tempFilePath);
+
+//         // Remove the temporary file after successful upload
+//         fs.unlinkSync(tempFilePath);
+
+//         // Respond with success and Firebase URLs
+//         return res.status(200).json({
+//             message: 'File uploaded successfully',
+//             downloadUrl: uploadResult.downloadUrl,
+//             readUrl: uploadResult.readUrl,
+//         });
+//     } catch (error) {
+//         console.error('Error during file upload:', error);
+//         return res.status(500).json({ error: 'Failed to upload file.' });
+//     }
+// });
+
 router.post('/upload', upload.single('file'), async (req, res) => {
     try {
         // Check if a file is provided
@@ -97,8 +133,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'No file uploaded.' });
         }
 
+        // Generate a unique file name (could also use Date.now() or userId for uniqueness)
+        const uniqueFileName = `${uuidv4()}_${req.file.originalname}`; // Example: 'uuid_aadhar_front.jpg'
+
         const tempDir = path.join(__dirname, 'temp');
-        const tempFilePath = path.join(tempDir, req.file.originalname); // Temporary file path
+        const tempFilePath = path.join(tempDir, uniqueFileName); // Use unique file name for temp path
 
         // Ensure the temp directory exists
         if (!fs.existsSync(tempDir)) {
@@ -108,8 +147,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         // Write the file buffer to the temp folder
         fs.writeFileSync(tempFilePath, req.file.buffer);
 
-        // Upload the file to Firebase Storage
-        const uploadResult = await uploadFileToFirebase(tempFilePath);
+        // Upload the file to Firebase Storage with the unique file name
+        const uploadResult = await uploadFileToFirebase(tempFilePath, uniqueFileName);
 
         // Remove the temporary file after successful upload
         fs.unlinkSync(tempFilePath);
@@ -125,8 +164,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         return res.status(500).json({ error: 'Failed to upload file.' });
     }
 });
-
-
 
 
 module.exports = router;

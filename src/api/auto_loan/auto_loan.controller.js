@@ -899,7 +899,7 @@ const checkFileReassignStatus = async (req, res) => {
   try {
     const { file_number } = req.params;
 
-    // Find the record by file_number
+    // Find loan file by file number
     const loanFile = await loanfilemodel.findOne({ file_number: file_number.trim() });
 
     if (!loanFile) {
@@ -909,12 +909,8 @@ const checkFileReassignStatus = async (req, res) => {
       });
     }
 
-    // Check if sales_status is 'Interested'
+    // Check if the sales status is 'Interested'
     if (loanFile.sales_status === 'Interested') {
-      const currentDate = moment(); // Get the current date
-      const salesAssignDate = moment(loanFile.sales_assign_date); // Convert sales_assign_date to a moment object
-
-      // Check if sales_assign_date exists
       if (!loanFile.sales_assign_date) {
         return res.status(400).json({
           success: false,
@@ -922,13 +918,17 @@ const checkFileReassignStatus = async (req, res) => {
         });
       }
 
-      // Calculate the difference in days
-      const daysDifference = currentDate.diff(salesAssignDate, 'days');
+      // Calculate the difference in days, including time
+      const currentDate = moment();  // Get current date and time
+      const salesAssignDate = moment(loanFile.sales_assign_date); // Use the exact stored date and time
 
+      const daysDifference = currentDate.diff(salesAssignDate, 'days', true); // 'true' for floating point precision
+
+      // Check if less than or equal to 10 days
       if (daysDifference <= 10) {
         return res.status(403).json({
           success: false,
-          message: `File is locked for 10 days. Remaining locked period: ${10 - daysDifference} days.`
+          message: `File is locked for 10 days. Remaining locked period: ${Math.ceil(10 - daysDifference)} days.`  // Round up to give correct remaining days
         });
       } else {
         return res.status(200).json({
@@ -951,6 +951,8 @@ const checkFileReassignStatus = async (req, res) => {
     });
   }
 };
+
+
 
 
 // const createdesposition = async (req, res) => {
@@ -1319,6 +1321,173 @@ const getLoanfiledetailsbyfilenumber = async (req, res) => {
 // };
 
 
+// const getLoanFilesByUserId = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+//     const {
+//       startDate,   // New: filter by start date (ISO format)
+//       endDate,     // New: filter by end date (ISO format)
+//       teamLeaderName, // New: filter by team leader's name
+//       salesAgentName  // New: filter by sales agent's name
+//     } = req.query;
+
+//     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
+
+//     // Find the user by userId
+//     const userRecord = await user.findOne({ userId: sanitizedUserId });
+//     if (!userRecord) {
+//       return res.status(404).json({
+//         success: false,
+//         message: `User not found with userId ${sanitizedUserId}`,
+//       });
+//     }
+
+//     let query = {};
+
+//     // Construct the query based on the user's role
+//     if (userRecord.role === 'sales') {
+//       query = { sales_agent_id: sanitizedUserId };
+//     } else if (userRecord.role === 'CDR') {
+//       query = { cdr_agent_id: sanitizedUserId };
+//     } else if (userRecord.role === 'TVR') {
+//       query = { tvr_agent_id: sanitizedUserId };
+//     } else if (userRecord.role === 'admin') {
+//       query = { sales_status: "Interested" };
+//     } else if (userRecord.role === 'Team leader') {
+//       query = {};
+//     } else if (userRecord.role === 'Bank login') {
+//       query = { banklogin_agent_id: sanitizedUserId };
+//     } else {
+//       return res.status(400).json({
+//         success: false,
+//         message: `Invalid role for userId ${sanitizedUserId}`,
+//       });
+//     }
+
+//     // Apply date range filter if provided
+//     if (startDate && endDate) {
+//       if (userRecord.role === 'sales') {
+//         const start = new Date(startDate);
+//         start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+//         const end = new Date(endDate);
+//         end.setHours(23, 59, 59, 999);
+//         query.sales_assign_date = { $gte: start, $lte: end };
+//       }
+//       else if (userRecord.role === 'TVR') {
+//         const start = new Date(startDate);
+//         start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+//         const end = new Date(endDate);
+//         end.setHours(23, 59, 59, 999);
+//         query.tvr_assign_date = { $gte: start, $lte: end };
+        
+//       }
+//       else if (userRecord.role === 'CDR') {
+//         const start = new Date(startDate);
+//         start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+//         const end = new Date(endDate);
+//         end.setHours(23, 59, 59, 999);
+//         query.cdr_assign_date = { $gte: start, $lte: end };
+        
+//       }
+//       else if (userRecord.role === 'Bank login') {
+//         const start = new Date(startDate);
+//         start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+//         const end = new Date(endDate);
+//         end.setHours(23, 59, 59, 999);
+//         query.banklogin_assign_date = { $gte: start, $lte: end };
+        
+//       }
+//     }
+
+//     // if (startDate && endDate) {
+//     //   const start = new Date(startDate);
+//     //   start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
+
+//     //   const end = new Date(endDate);
+//     //   end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
+
+//     //   dateFilter.sales_assign_date = { $gte: start, $lte: end };
+//     //   dispositiondateFilter.createdAt= { $gte: start, $lte: end };
+//     // }
+
+//     // Fetch loan files based on the constructed query
+//     let loanFiles = await loanfilemodel.find(query);
+
+//     // Apply sales agent name filter if provided
+//     if (salesAgentName) {
+//       const salesAgents = await user.find({
+//         name: { $regex: salesAgentName, $options: 'i' }, // Case-insensitive match
+//         role: 'sales'
+//       }, 'userId');
+//       const salesAgentIds = salesAgents.map(agent => agent.userId);
+//       loanFiles = loanFiles.filter(file => salesAgentIds.includes(file.sales_agent_id));
+//     }
+
+//     // Fetch additional loan details and team leader name
+//     const filesWithLoanDetails = await Promise.all(
+//       loanFiles.map(async (file) => {
+//         // Fetch the type of loan from personal details
+//         const personalDetails = await personal_details_model.findOne({
+//           file_number: file.file_number,
+//         });
+
+//         // Get the sales_agent_id from loanfile
+//         const salesAgentId = file.sales_agent_id;
+
+//         let teamLeaderNameResult = 'Not Available';
+//         if (salesAgentId) {
+//           // Find the user associated with sales_agent_id to get reportingTo
+//           const salesAgent = await user.findOne({ userId: salesAgentId });
+
+//           if (salesAgent && salesAgent.reportingTo) {
+//             // Find the team leader by the reportingTo value
+//             const teamLeader = await user.findOne({ userId: salesAgent.reportingTo });
+//             if (teamLeader) {
+//               teamLeaderNameResult = teamLeader.name;
+//             }
+//           }
+//         }
+
+//         // Apply team leader name filter if provided
+//         if (teamLeaderName && teamLeaderNameResult.toLowerCase() !== teamLeaderName.toLowerCase()) {
+//           return null; // Exclude the record if team leader name doesn't match
+//         }
+
+//         // Return the loan file with additional details including team leader name
+//         return {
+//           ...file.toObject(),
+//           type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Updated',
+//           teamleadername: teamLeaderNameResult
+//         };
+//       })
+//     );
+
+//     // Filter out null values that didn't match team leader name filter
+//     const filteredFiles = filesWithLoanDetails.filter(file => file !== null);
+
+//     if (filteredFiles.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: `No loan files found for the given filters`,
+//       });
+//     }
+
+//     // Return the loan files with additional details
+//     return res.status(200).json({
+//       success: true,
+//       message: 'Records fetched successfully',
+//       data: filteredFiles,
+//     });
+//   } catch (error) {
+//     console.error('Error fetching loan files:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Failed to fetch loan files',
+//       error: error.message,
+//     });
+//   }
+// };
+
 const getLoanFilesByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -1343,70 +1512,62 @@ const getLoanFilesByUserId = async (req, res) => {
     let query = {};
 
     // Construct the query based on the user's role
-    if (userRecord.role === 'sales') {
-      query = { sales_agent_id: sanitizedUserId };
-    } else if (userRecord.role === 'CDR') {
-      query = { cdr_agent_id: sanitizedUserId };
-    } else if (userRecord.role === 'TVR') {
-      query = { tvr_agent_id: sanitizedUserId };
-    } else if (userRecord.role === 'admin') {
-      query = { sales_status: "Interested" };
-    } else if (userRecord.role === 'Team leader') {
-      query = {};
-    } else if (userRecord.role === 'Bank login') {
-      query = { banklogin_agent_id: sanitizedUserId };
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid role for userId ${sanitizedUserId}`,
-      });
+    switch(userRecord.role) {
+      case 'sales':
+        query = { sales_agent_id: sanitizedUserId };
+        break;
+      case 'CDR':
+        query = { cdr_agent_id: sanitizedUserId };
+        break;
+      case 'TVR':
+        query = { tvr_agent_id: sanitizedUserId };
+        break;
+      case 'admin':
+        query = { sales_status: "Interested" };
+        break;
+      case 'Team leader':
+        query = {};
+        break;
+      case 'Bank login':
+        query = { banklogin_agent_id: sanitizedUserId };
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: `Invalid role for userId ${sanitizedUserId}`,
+        });
     }
 
     // Apply date range filter if provided
     if (startDate && endDate) {
-      if (userRecord.role === 'sales') {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.sales_assign_date = { $gte: start, $lte: end };
-      }
-      else if (userRecord.role === 'TVR') {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.tvr_assign_date = { $gte: start, $lte: end };
-        
-      }
-      else if (userRecord.role === 'CDR') {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.cdr_assign_date = { $gte: start, $lte: end };
-        
-      }
-      else if (userRecord.role === 'Bank login') {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.banklogin_assign_date = { $gte: start, $lte: end };
-        
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      // Set time for startDate to beginning of the day
+      start.setUTCHours(0, 0, 0, 0);
+
+      // Set time for endDate to the end of the day
+      end.setUTCHours(23, 59, 59, 999);
+
+      // Apply the correct date field based on the role
+      switch(userRecord.role) {
+        case 'sales':
+          query.sales_assign_date = { $gte: start, $lte: end };
+          break;
+        case 'TVR':
+          query.tvr_assign_date = { $gte: start, $lte: end };
+          break;
+        case 'CDR':
+          query.cdr_assign_date = { $gte: start, $lte: end };
+          break;
+        case 'Bank login':
+          query.banklogin_assign_date = { $gte: start, $lte: end };
+          break;
+          case 'admin':
+          query.sales_assign_date = { $gte: start, $lte: end };
+          break;
       }
     }
-
-    // if (startDate && endDate) {
-    //   const start = new Date(startDate);
-    //   start.setHours(0, 0, 0, 0); // Set startDate to the beginning of the day (00:00:00)
-
-    //   const end = new Date(endDate);
-    //   end.setHours(23, 59, 59, 999); // Set endDate to the end of the day (23:59:59.999)
-
-    //   dateFilter.sales_assign_date = { $gte: start, $lte: end };
-    //   dispositiondateFilter.createdAt= { $gte: start, $lte: end };
-    // }
 
     // Fetch loan files based on the constructed query
     let loanFiles = await loanfilemodel.find(query);
@@ -1485,6 +1646,7 @@ const getLoanFilesByUserId = async (req, res) => {
     });
   }
 };
+
 
 const admindashboardcount = async (req, res) => {
   try {

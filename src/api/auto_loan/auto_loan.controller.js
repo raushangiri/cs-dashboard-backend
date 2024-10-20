@@ -1517,7 +1517,7 @@ const admindashboardcount = async (req, res) => {
         $group: {
           _id: null,
           tvrCompleted: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Completed'] }, 1, 0] } },
-          tvrPending: { $sum: { $cond: [{ $eq: ['$file_status', 'process_to_tvr'] }, 1, 0] } },
+          tvrPending: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Pending'] }, 1, 0] } },
           tvrRejected: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Rejected'] }, 1, 0] } },
           cdrCompleted: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Completed'] }, 1, 0] } },
           cdrPending: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Pending'] }, 1, 0] } },
@@ -1547,7 +1547,29 @@ const admindashboardcount = async (req, res) => {
       sales_status: 'Interested',
       sales_assign_date: { $gte: start, $lte: end }
     });
-
+    const pendingCounts = await loanfilemodel.aggregate([
+      {
+        $group: {
+          _id: null, // We don't need to group by any specific field
+          pendingtvrCount: {
+            $sum: { $cond: [{ $eq: ["$tvr_status", "Pending"] }, 1, 0] }
+          },
+          pendingcdrCount: {
+            $sum: { $cond: [{ $eq: ["$cdr_status", "Pending"] }, 1, 0] }
+          },
+          pendingbankloginCount: {
+            $sum: { $cond: [{ $eq: ["$banklogin_status", "Pending"] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+    
+    // Extract counts from the aggregation result
+    const {
+      pendingtvrCount = 0,
+      pendingcdrCount = 0,
+      pendingbankloginCount = 0
+    } = pendingCounts[0] || {};
     // Count dispositions marked as NotInterested within the date range
     const notInterestedCount = await dispositionmodel.countDocuments({
       is_interested: 'NotInterested',
@@ -1562,13 +1584,13 @@ const admindashboardcount = async (req, res) => {
       interestedCount, // Count of Interested loan files
       notInterestedCount, // Count of Not Interested dispositions
       tvrCompleted: loanFileCount.tvrCompleted,
-      tvrPending: loanFileCount.tvrPending,
+      tvrPending: pendingtvrCount,
       tvrRejected: loanFileCount.tvrRejected,
       cdrCompleted: loanFileCount.cdrCompleted,
-      cdrPending: loanFileCount.cdrPending,
+      cdrPending: pendingcdrCount,
       cdrRejected: loanFileCount.cdrRejected,
       bankloginCompleted: loanFileCount.bankloginCompleted,
-      bankloginPending: loanFileCount.bankloginPending,
+      bankloginPending: pendingbankloginCount,
       bankloginRejected: loanFileCount.bankloginRejected
     });
   } catch (error) {

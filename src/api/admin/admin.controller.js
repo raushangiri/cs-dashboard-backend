@@ -2,6 +2,7 @@ const auto_loan_file = require("../../model/auto_loan_file.model");
 const personal_details_model = require('../../model/personaldetails.model');  // Your model
 const loanfilemodel = require('../../model/loan_file.model'); // Assuming your model is in the same folder
 const user = require('../../model/user.model'); // Assuming your model is in the same folder
+const overview_details = require("../../model/overview.model");
 
 
 const getLoanFilesByDate = async (req, res) => {
@@ -40,79 +41,71 @@ const gettvrFilesByDate = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Check if dates are provided
     if (!startDate || !endDate) {
       return res.status(400).json({ message: 'Start date and end date are required.' });
     }
 
-    // Convert the received dates to ISO format with time included
-    const startOfDay = new Date(new Date(startDate).setHours(0, 0, 0, 0)); // 12:00 AM of startDate
-    const endOfDay = new Date(new Date(endDate).setHours(23, 59, 59, 999)); // 11:59:59 PM of endDate
+    const startOfDay = new Date(new Date(startDate).setHours(0, 0, 0, 0));
+    const endOfDay = new Date(new Date(endDate).setHours(23, 59, 59, 999));
 
-    // Step 1: Query loanfilemodel collection based on tvr_assign_date
     const loanFiles = await loanfilemodel.find({
-      tvr_assign_date: {
-        $gte: startOfDay, // Greater than or equal to the start of the day
-        $lte: endOfDay,   // Less than or equal to the end of the day
-      }
+      tvr_assign_date: { $gte: startOfDay, $lte: endOfDay },
     });
 
-    // Step 2: If loan files found, proceed to enrich with team leader info
     if (loanFiles.length > 0) {
-
       const enrichedLoanFiles = await Promise.all(
         loanFiles.map(async (loanFile) => {
           const loanfiledata = await personal_details_model.findOne({ file_number: loanFile.file_number });
+          const overview_detail = await overview_details.findOne({ file_number: loanFile.file_number });
 
-          // If there's no tvr_agent_id, return "Pending" for agent name and proceed
+          console.log(loanfiledata.type_of_loan,"type_of_loan")
           if (!loanFile.tvr_agent_id) {
             return {
               ...loanFile.toObject(),
               teamleadername: null,
               teamleaderuserid: null,
-              tvr_agent_id:null,
-              tvr_agent_name:"Pending",
-              // type_of_loan:loanfiledata.type_of_loan
-
+              tvr_agent_id: null,
+              tvr_agent_name: loanfiledata.tvr_agent_name,
+              type_of_loan: overview_detail.type_of_loan,
             };
           }
 
-          // Find the user (agent) by tvr_agent_id (which is stored as userId in UserModel)
           const agent = await user.findOne({ userId: loanFile.tvr_agent_id });
 
-          // If the agent exists, find the team leader using the reportingTo field
           if (agent && agent.reportingTo) {
             const teamLeader = await user.findOne({ userId: agent.reportingTo });
 
-            // If team leader is found, enrich the loan file with their details
             if (teamLeader) {
               return {
-                ...loanFile.toObject(),  // Convert Mongoose document to plain object
+                ...loanFile.toObject(),
                 teamleadername: teamLeader.name,
                 teamleaderuserid: teamLeader.userId,
-                
               };
+            } else {
+              console.log(`No team leader found for agent ${agent.userId}`);
             }
+          } else {
+            console.log(`No agent or reportingTo found for loan file: ${loanFile._id}`);
           }
-          // If no team leader is found, return loan file with agent's information
+
           return {
             ...loanFile.toObject(),
             teamleadername: "Pending",
             teamleaderuserid: null,
-            // type_of_loan:loanfiledata.type_of_loan
           };
         })
       );
 
-      // Step 3: Return the enriched loan files
       res.status(200).json({ status: 200, data: enrichedLoanFiles });
     } else {
       res.status(404).json({ status: 404, message: 'No loan files found for the given date range.' });
     }
   } catch (error) {
+    console.error('Error fetching loan files:', error);
     res.status(500).json({ status: 500, message: 'Server error', error: error.message });
   }
 };
+
 
 const getcdrFilesByDate = async (req, res) => {
   try {

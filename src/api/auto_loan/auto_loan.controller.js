@@ -805,9 +805,7 @@ const createdesposition = async (req, res) => {
         if (!loanFile.tvr_agent_id.trim()) {
           updateData.tvr_agent_id = userId;
           updateData.tvr_agent_name = userdetails.name
-
           updateData.file_status = file_status;
-
           updateNeeded = true;
         } else {
           updateData.file_status = file_status;
@@ -1510,7 +1508,8 @@ const admindashboardcount = async (req, res) => {
           $or: [
             { tvr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
             { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
-            { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } }
+            { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
+            { file_status: { $in: ['process_to_tvr', 'process_to_cdr', 'process_to_login_team'] } }
           ]
         }
       },
@@ -1518,7 +1517,7 @@ const admindashboardcount = async (req, res) => {
         $group: {
           _id: null,
           tvrCompleted: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Completed'] }, 1, 0] } },
-          tvrPending: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Pending'] }, 1, 0] } },
+          tvrPending: { $sum: { $cond: [{ $eq: ['$file_status', 'process_to_tvr'] }, 1, 0] } },
           tvrRejected: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Rejected'] }, 1, 0] } },
           cdrCompleted: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Completed'] }, 1, 0] } },
           cdrPending: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Pending'] }, 1, 0] } },
@@ -2021,7 +2020,7 @@ const getTvrDocumentsCountByUserId = async (req, res) => {
             { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
             { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } }
           ],
-          ...dateFilter // Apply date filter here
+          ...dateFilter 
         }
       },
       {

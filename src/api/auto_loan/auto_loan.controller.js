@@ -925,7 +925,7 @@ const checkFileReassignStatus = async (req, res) => {
       const daysDifference = currentDate.diff(salesAssignDate, 'days', true); // 'true' for floating point precision
 
       // Check if less than or equal to 10 days
-      if (daysDifference <= 10) {
+      if (daysDifference <= 15) {
         return res.status(403).json({
           success: false,
           message: `File is locked for 10 days. Remaining locked period: ${Math.ceil(10 - daysDifference)} days.`  // Round up to give correct remaining days
@@ -1073,6 +1073,50 @@ const createLoandetails = async (req, res) => {
     res.status(500).json({ message: 'Error adding loan details', error: error.message });
   }
 };
+
+const updateLoandetails = async (req, res) => {
+  const { loanId } = req.params; // Loan ID is passed in the URL
+
+  try {
+    const {
+      bank_name,
+      emi_amount,
+      loan_term,
+      loan_start_date,
+      loan_end_date,
+      emi_date,
+      no_of_emi_bounces,
+      bounces_reason,
+      car_details
+    } = req.body;
+
+    // Find the loan document by loanId and update it with the new details
+    const updatedLoan = await LoandataModel.findByIdAndUpdate(
+      loanId, // Find by loanId
+      {
+        bank_name,
+        emi_amount,
+        loan_term,
+        loan_start_date,
+        loan_end_date,
+        emi_date,
+        no_of_emi_bounces,
+        bounces_reason,
+        car_details
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedLoan) {
+      return res.status(404).json({ message: 'Loan details not found' });
+    }
+
+    res.status(200).json({ message: 'Loan details updated successfully', data: updatedLoan });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating loan details', error: error.message });
+  }
+};
+
 
 // Get all loan details by file number
 const getLoandetails = async (req, res) => {
@@ -3580,6 +3624,6 @@ module.exports = {
   getteamleaderLoanFilesByFilters,
   deletedocumentdata,
   viewbankStatement,
-  updateBankStatement
-
+  updateBankStatement,
+  updateLoandetails
 };

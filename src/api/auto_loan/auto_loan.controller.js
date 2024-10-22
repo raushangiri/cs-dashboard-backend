@@ -717,6 +717,54 @@ const createreferencedetail = async (req, res) => {
   }
 };
 
+const updatereferencedetail = async (req, res) => {
+  const { id } = req.params; // Get the reference ID from the URL parameters
+  const {
+    reference_name,
+    reference_mobile_number,
+    reference_occupation_type,
+    reference_nature_of_business,
+    company_name,
+    reference_address,
+  } = req.body;
+
+  try {
+    // Find the reference detail by ID
+    const existingReferenceDetail = await reference_details.findById(id);
+
+    // Check if the reference detail exists
+    if (!existingReferenceDetail) {
+      return res.status(404).json({
+        message: 'Reference detail not found',
+      });
+    }
+
+    // Update the reference detail with the new data
+    existingReferenceDetail.reference_name = reference_name;
+    existingReferenceDetail.reference_mobile_number = reference_mobile_number;
+    existingReferenceDetail.reference_occupation_type = reference_occupation_type;
+    existingReferenceDetail.reference_nature_of_business = reference_nature_of_business;
+    existingReferenceDetail.company_name = company_name;
+    existingReferenceDetail.reference_address = reference_address;
+
+    // Save the updated reference detail
+    const updatedReferenceDetail = await existingReferenceDetail.save();
+
+    // Respond with success
+    res.status(200).json({
+      message: 'Reference detail updated successfully',
+      data: updatedReferenceDetail,
+    });
+  } catch (error) {
+    // Handle any errors
+    res.status(500).json({
+      message: 'Error updating reference detail',
+      error: error.message,
+    });
+  }
+};
+
+
 const getreferencedetail = async (req, res) => {
   const { file_number } = req.params;
 
@@ -3625,5 +3673,6 @@ module.exports = {
   deletedocumentdata,
   viewbankStatement,
   updateBankStatement,
-  updateLoandetails
+  updateLoandetails,
+  updatereferencedetail
 };

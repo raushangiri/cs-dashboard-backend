@@ -183,6 +183,8 @@ const getbanklogindetails = async (req, res) => {
   }
 };
 
+
+
 // const sendEmailWithAttachment = async (req, res) => {
 //   try {
 //     // Extract user details and document link from the request body
@@ -389,5 +391,6 @@ module.exports = {
     getlist,
     createBankDetail,
     getbanklogindetails,
-    sendDocumentEmail
+    sendDocumentEmail,
+    // getbanklogindetailsbyid
   };

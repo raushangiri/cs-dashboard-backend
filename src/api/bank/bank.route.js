@@ -7,7 +7,8 @@ const {
     getlist,
     createBankDetail,
     getbanklogindetails,
-    sendDocumentEmail
+    sendDocumentEmail,
+    // getbanklogindetailsbyid
 } = require("./bank_details.controller");
 
 router.post("/getrmDetails", get_rmDetails);
@@ -17,6 +18,9 @@ router.get("/getlist", getlist);
 router.post("/createBankDetail", createBankDetail);
 router.get("/getbanklogindetails/:file_number", getbanklogindetails);
 router.post("/sendEmailWithAttachment", sendDocumentEmail);
+// router.get("/getbanklogindetailsbyid ", getbanklogindetailsbyid);
+
+
 
 
 module.exports = router;

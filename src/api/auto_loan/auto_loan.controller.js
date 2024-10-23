@@ -17,6 +17,7 @@ const app = express();
 const moment = require('moment');
 const BankStatementmodel = require('../../model/bankStatement.model');
 const bankStatementModel = require("../../model/bankStatement.model");
+const BankDetail = require("../../model/banklogin.model");
 
 const processAndSaveAutoLoanApplication = async (data) => {
   try {
@@ -3376,7 +3377,7 @@ const getteamleaderperformance = async (req, res) => {
 
     // Find all users who report to the given userId
     const usersReportingTo = await user.find({ reportingTo: userId }, 'userId name reportingTo');
-    console.log(usersReportingTo, "usersReportingTo")
+    // console.log(usersReportingTo, "usersReportingTo")
 
     // If no users are found, return an empty response
     if (usersReportingTo.length === 0) {
@@ -3636,7 +3637,24 @@ const getteamleaderLoanFilesByFilters = async (req, res) => {
   }
 };
 
+const getbanklogindetailsbyid = async (req, res) => {
+  const { _id } = req.params;
 
+  try {
+    const bankLoginDetails = await BankDetail.findById(_id);
+
+    if (!bankLoginDetails) {
+      return res.status(404).json({ message: 'No records found' });
+    }
+
+    // Return data as an array
+    res.status(200).json([bankLoginDetails]);
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving records', error: error.message });
+  }
+};
+
+  
 
 
 
@@ -3678,5 +3696,6 @@ module.exports = {
   viewbankStatement,
   updateBankStatement,
   updateLoandetails,
-  updatereferencedetail
+  updatereferencedetail,
+  getbanklogindetailsbyid
 };

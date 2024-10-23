@@ -45,7 +45,8 @@ const {
   viewbankStatement,
   updateBankStatement,
   updateLoandetails,
-  updatereferencedetail
+  updatereferencedetail,
+  getbanklogindetailsbyid
 } = require("./auto_loan.controller");
 
 
@@ -87,6 +88,7 @@ router.get("/getteamleaderperformance/:userId", getteamleaderperformance);
 router.put('/updateBankStatement/:_id', updateBankStatement);
 router.put('/updateLoandetails/:loanId', updateLoandetails);
 router.post('/updatereferencedetail/:id', updatereferencedetail);
+router.get("/getbanklogindetailsbyid/:_id", getbanklogindetailsbyid);
 
 
 

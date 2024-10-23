@@ -872,17 +872,7 @@ const createdesposition = async (req, res) => {
           updateData.tvr_status = 'Rejected';
           updateNeeded = true;
         }
-        if(file_status==="reassigned_to_salesagent"){
-          updateData.tvr_status="",
-          updateData.tvr_agent_id="",
-          updateData.tvr_assign_date=null,
-          updateData.cdr_status="",
-          updateData.cdr_agent_id="",
-          updateData.cdr_assign_date=null,
-          updateData.banklogin_status="",
-          updateData.banklogin_agent_id="",
-          updateData.banklogin_assign_date=null
-        }
+        
         break;
       case 'CDR':
         if (!loanFile.cdr_agent_id.trim()) {
@@ -906,17 +896,6 @@ const createdesposition = async (req, res) => {
           updateData.cdr_status = 'Rejected';
           updateNeeded = true;
         }
-        if(file_status==="reassigned_to_salesagent"){
-          updateData.tvr_status="",
-          updateData.tvr_agent_id="",
-          updateData.tvr_assign_date=null,
-          updateData.cdr_status="",
-          updateData.cdr_agent_id="",
-          updateData.cdr_assign_date=null,
-          updateData.banklogin_status="",
-          updateData.banklogin_agent_id="",
-          updateData.banklogin_assign_date=null
-        }
         break;
       case 'Bank login':
         if (!loanFile.banklogin_agent_id.trim()) {
@@ -939,17 +918,6 @@ const createdesposition = async (req, res) => {
         if (file_status === 'bank_login_rejected') {
           updateData.banklogin_status = 'Rejected';
           updateNeeded = true;
-        }
-        if(file_status==="reassigned_to_salesagent"){
-          updateData.tvr_status="",
-          updateData.tvr_agent_id="",
-          updateData.tvr_assign_date=null,
-          updateData.cdr_status="",
-          updateData.cdr_agent_id="",
-          updateData.cdr_assign_date=null,
-          updateData.banklogin_status="",
-          updateData.banklogin_agent_id="",
-          updateData.banklogin_assign_date=null
         }
         break;
       default:

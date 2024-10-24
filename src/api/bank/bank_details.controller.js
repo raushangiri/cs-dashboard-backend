@@ -164,6 +164,32 @@ const createBankDetail = async (req, res) => {
   }
 };
 
+const deleteBankDetail = async (req, res) => {
+  try {
+    const { _id } = req.params;
+
+    // Find and delete the bank detail by id
+    const deletedBankDetail = await banklogin_details.findByIdAndDelete(_id);
+
+    // If the bank detail does not exist
+    if (!deletedBankDetail) {
+      return res.status(404).json({
+        message: 'Bank detail not found'
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Bank detail deleted successfully',
+      deletedBankDetail
+    });
+  } catch (error) {
+    console.error('Error deleting bank detail:', error);
+    return res.status(500).json({
+      error: 'Server error, please try again later.'
+    });
+  }
+};
+
 
 const getbanklogindetails = async (req, res) => {
   // Correctly extract userId from req.params
@@ -274,6 +300,36 @@ const sendEmailWithAttachment = (email, subject, text, attachments, cc) => {
     });
   });
 };
+// const sendEmailWithAttachment = (email, subject, text, attachments, cc) => {
+//   return new Promise((resolve, reject) => {
+//     let transporter = nodemailer.createTransport({
+//       service: 'gmail',
+//       auth: {
+//         user: process.env.EMAIL_USERNAME,
+//         pass: process.env.EMAIL_PASSWORD,
+//       },
+//     });
+
+//     let mailOptions = {
+//       from: process.env.EMAIL_USERNAME,
+//       to: Array.isArray(email) ? email.join(", ") : email,  // Handles multiple recipients
+//       cc: Array.isArray(cc) ? cc.join(", ") : cc,           // Handles multiple CC recipients
+//       subject: subject,
+//       text: text,
+//       attachments: attachments.map(attachment => ({
+//         filename: attachment.filename,  // Directly use the filename from the frontend
+//         path: attachment.path,          // Use the path as passed from the frontend (URL or file path)
+//       })),
+//     };
+
+//     transporter.sendMail(mailOptions, (err, info) => {
+//       if (err) {
+//         return reject(err);
+//       }
+//       resolve(info);
+//     });
+//   });
+// };
 
 
 // API function (controller)
@@ -392,5 +448,5 @@ module.exports = {
     createBankDetail,
     getbanklogindetails,
     sendDocumentEmail,
-    // getbanklogindetailsbyid
-  };
+    deleteBankDetail
+    };

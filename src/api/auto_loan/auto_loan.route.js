@@ -46,7 +46,9 @@ const {
   updateBankStatement,
   updateLoandetails,
   updatereferencedetail,
-  getbanklogindetailsbyid
+  getbanklogindetailsbyid,
+  deleteLoanDetails,
+  deletereferencedetail
 } = require("./auto_loan.controller");
 
 
@@ -90,6 +92,8 @@ router.put('/updateLoandetails/:loanId', updateLoandetails);
 router.post('/updatereferencedetail/:id', updatereferencedetail);
 router.get("/getbanklogindetailsbyid/:_id", getbanklogindetailsbyid);
 
+router.delete("/deleteLoanDetails/:_id", deleteLoanDetails);
+router.delete("/deletereferencedetail/:_id", deletereferencedetail);
 
 
 module.exports = router;

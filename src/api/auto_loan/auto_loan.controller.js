@@ -718,6 +718,35 @@ const createreferencedetail = async (req, res) => {
   }
 };
 
+const deletereferencedetail = async (req, res) => {
+  const { _id } = req.params; // Assuming the reference ID is passed in the URL as a parameter
+
+  try {
+    // Find the reference detail by its ID and delete it
+    const deletedReferenceDetail = await reference_details.findByIdAndDelete(_id);
+
+    // If the reference detail doesn't exist
+    if (!deletedReferenceDetail) {
+      return res.status(404).json({
+        message: 'Reference detail not found',
+      });
+    }
+
+    // Respond with success if the deletion was successful
+    res.status(200).json({
+      message: 'Reference detail deleted successfully',
+      data: deletedReferenceDetail, // Returning the deleted reference data (optional)
+    });
+  } catch (error) {
+    // Handle any errors during deletion
+    res.status(500).json({
+      message: 'Error deleting reference detail',
+      error: error.message,
+    });
+  }
+};
+
+
 const updatereferencedetail = async (req, res) => {
   const { id } = req.params; // Get the reference ID from the URL parameters
   const {
@@ -1170,6 +1199,22 @@ const updateLoandetails = async (req, res) => {
   }
 };
 
+const deleteLoanDetails = async (req, res) => {
+  const { _id } = req.params;
+
+  try {
+    // Find and delete the loan entry by its _id
+    const deletedLoan = await LoandataModel.findByIdAndDelete(_id);
+
+    if (!deletedLoan) {
+      return res.status(404).json({ message: 'Loan details not found' });
+    }
+
+    res.status(200).json({ message: 'Loan details deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting loan details', error: error.message });
+  }
+};
 
 // Get all loan details by file number
 const getLoandetails = async (req, res) => {
@@ -3697,5 +3742,7 @@ module.exports = {
   updateBankStatement,
   updateLoandetails,
   updatereferencedetail,
-  getbanklogindetailsbyid
+  getbanklogindetailsbyid,
+  deleteLoanDetails,
+  deletereferencedetail
 };

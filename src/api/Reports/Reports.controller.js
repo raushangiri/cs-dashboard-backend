@@ -231,11 +231,78 @@ const time = cdrAssignDate.toLocaleTimeString('en-US', { hour: '2-digit', minute
   }
 };
 
+const loginreport= async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    // Ensure startDate and endDate are provided
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required.',
+      });
+    }
+
+    // Find loan files where tvr_agent_id exists and filter by tvr_assign_date within date range
+    const loanFiles = await loanfilemodel.find({
+      banklogin_agent_id: { $exists: true, $ne: ""  },
+      banklogin_assign_date: {
+        $gte: new Date(startDate), // Filter from startDate
+        $lte: new Date(endDate),   // Filter to endDate
+      },
+    }).select('banklogin_assign_date customer_name customer_mobile_number banklogin_agent_id banklogin_status banklogin_agent_name ');
+
+    // Process each loan file to find team leader details
+    const result = await Promise.all(loanFiles.map(async (loanFile) => {
+      // Find the user (agent) with cdr_agent_id
+      const agent = await user.findOne({ userId: loanFile.banklogin_agent_id });
+
+      // Find the team leader based on the reportingTo value
+      let teamLeader = null;
+      if (agent && agent.reportingTo) {
+        teamLeader = await user.findOne({ userId: agent.reportingTo });
+      }
+      const bankloginAssignDate = new Date(loanFile.banklogin_assign_date);
+      const date = bankloginAssignDate.toLocaleDateString('Gn-US');
+
+// Extract the time (e.g., "10:30 AM")
+const time = bankloginAssignDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+// console.log(date); // Outputs something like "10/3/2024"
+// console.log(time);
+      // Return loan file details along with team leader info
+      return {
+        teamleaderid: teamLeader ? teamLeader.userId : null,
+        teamleadername: teamLeader ? teamLeader.name : null,
+        banklogin_agent_id: loanFile.banklogin_agent_id,
+        banklogin_agent_name: loanFile.banklogin_agent_name,
+        banklogin_status: loanFile.banklogin_status,
+        customer_name: loanFile.customer_name,
+        customer_mobile_number: loanFile.customer_mobile_number,
+        banklogin_assign_date:date,
+        time: time
+      };
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('Error fetching loan files:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error. Please try again later.',
+    });
+  }
+};
+
 
 module.exports = {
     typeofloanreport,
     pendingcount,
     getTeamLeadersAndReporters,
     tvrreport,
-    cdrreport
+    cdrreport,
+    loginreport
 }

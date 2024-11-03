@@ -896,10 +896,13 @@ const createdesposition = async (req, res) => {
           updateData.cdr_status = 'Pending';
           updateData.cdr_assign_date = new Date();
           updateData.tvr_status = 'Completed';
+          updateData.tvr_action_date=new Date();
           updateNeeded = true;
         }
         if (file_status === 'tvr_rejected') {
           updateData.tvr_status = 'Rejected';
+          updateData.tvr_action_date=new Date();
+
           updateNeeded = true;
         }
         
@@ -919,11 +922,13 @@ const createdesposition = async (req, res) => {
         if (file_status === 'process_to_login_team') {
           updateData.banklogin_status = 'Pending';
           updateData.banklogin_assign_date = new Date();
+          updateData.cdr_action_date = new Date();
           updateData.cdr_status = 'Completed';
           updateNeeded = true;
         }
         if (file_status === 'cdr_rejected') {
           updateData.cdr_status = 'Rejected';
+          updateData.cdr_action_date = new Date();
           updateNeeded = true;
         }
         break;
@@ -941,12 +946,15 @@ const createdesposition = async (req, res) => {
         }
         if (file_status === 'bank_login_approved') {
           updateData.approval_status = 'Pending';
-          updateData.banklogin_assign_date = new Date();
+          updateData.approval_assign_date = new Date();
+          updateData.banklogin_action_date = new Date();
+
           updateData.banklogin_status = 'Completed';
           updateNeeded = true;
         }
         if (file_status === 'bank_login_rejected') {
           updateData.banklogin_status = 'Rejected';
+          updateData.banklogin_action_date = new Date();
           updateNeeded = true;
         }
         break;
@@ -3145,21 +3153,68 @@ const viewbankStatement = async (req, res) => {
 
 // const getLoanFilesByFilters = async (req, res) => {
 //   try {
-//     const { date, teamLeader, agentName } = req.query;
+//     const { startDate, endDate, teamLeaderName, salesAgentName } = req.query;
 
 //     // Build the query object based on provided filters
 //     let query = {};
 
-//     if (date) {
-//       const formattedDate = new Date(date).toISOString().split('T')[0]; // YYYY-MM-DD format
+//     // Handle date range filter
+//     if (startDate && endDate) {
+//       const start = new Date(startDate);
+//       start.setHours(0, 0, 0, 0); // Start of the day
+
+//       const end = new Date(endDate);
+//       end.setHours(23, 59, 59, 999); // End of the day
+
 //       query.sales_assign_date = {
-//         $gte: new Date(`${formattedDate}T00:00:00.000Z`),
-//         $lte: new Date(`${formattedDate}T23:59:59.999Z`)
+//         $gte: start,
+//         $lte: end
 //       };
 //     }
 
+//     // Fetch sales agent details if salesAgentName is provided
+//     if (salesAgentName) {
+//       const agents = await user.find({ name: salesAgentName }, 'userId'); // Fetch userIds matching the sales agent's name
+//       const agentIds = agents.map(agent => agent.userId);
+
+//       if (agentIds.length > 0) {
+//         query.sales_agent_id = { $in: agentIds }; // Add filter for sales_agent_id
+//       } else {
+//         return res.status(404).json({
+//           success: false,
+//           message: 'No sales agent found with the provided name',
+//         });
+//       }
+//     }
+
+//     // Fetch team leader details if teamLeaderName is provided
+//     if (teamLeaderName) {
+//       const teamLeaders = await user.find({ name: teamLeaderName }, 'userId'); // Fetch userIds matching the team leader's name
+//       const leaderIds = teamLeaders.map(leader => leader.userId);
+
+//       if (leaderIds.length > 0) {
+//         // Fetch sales agents reporting to this team leader
+//         const agents = await user.find({ reportingTo: { $in: leaderIds } }, 'userId');
+//         const agentIds = agents.map(agent => agent.userId);
+
+//         if (agentIds.length > 0) {
+//           query.sales_agent_id = { $in: agentIds }; // Add filter for sales_agent_id
+//         } else {
+//           return res.status(404).json({
+//             success: false,
+//             message: 'No sales agents found reporting to the provided team leader',
+//           });
+//         }
+//       } else {
+//         return res.status(404).json({
+//           success: false,
+//           message: 'No team leader found with the provided name',
+//         });
+//       }
+//     }
+
 //     // Fetch filtered loan files from the database
-//     const loanFiles = await loanfilemodel.find(query);
+//     const loanFiles = await loanfilemodel.find(query).sort({ sales_assign_date: -1 });
 
 //     if (loanFiles.length === 0) {
 //       return res.status(404).json({
@@ -3172,7 +3227,7 @@ const viewbankStatement = async (req, res) => {
 //     const salesAgentIds = [...new Set(loanFiles.map(file => file.sales_agent_id))];
 
 //     // Fetch users whose userId matches salesAgentIds
-//     const users = await user.find({ userId: { $in: salesAgentIds } }, 'userId name reportingTo'); // Fetch userId, name, and reportingTo fields
+//     const users = await user.find({ userId: { $in: salesAgentIds } }, 'userId name reportingTo');
 
 //     // Create a mapping of sales_agent_id to name and reportingTo user IDs
 //     const salesAgentMap = {};
@@ -3184,15 +3239,15 @@ const viewbankStatement = async (req, res) => {
 //     });
 
 //     // Create an array of reportingTo user IDs
-//     const reportingToIds = users.map(user => user.reportingTo).filter(Boolean); // Filter out any undefined values
+//     const reportingToIds = users.map(user => user.reportingTo).filter(Boolean);
 
 //     // Fetch reportingTo users' names from User collection based on reportingTo user IDs
-//     const reportingToUsers = await user.find({ userId: { $in: reportingToIds } }, 'userId name'); // Fetch userId and name fields
+//     const reportingToUsers = await user.find({ userId: { $in: reportingToIds } }, 'userId name');
 
 //     // Create a mapping of reportingTo user ID to name
 //     const reportingToNameMap = {};
 //     reportingToUsers.forEach(user => {
-//       reportingToNameMap[user.userId] = user.name; // Assuming name is the field for the user's name
+//       reportingToNameMap[user.userId] = user.name;
 //     });
 
 //     // Initialize response structure for each sales agent
@@ -3202,8 +3257,6 @@ const viewbankStatement = async (req, res) => {
 //       // Count records for each status for the current sales agent
 //       const salesInterestedCount = loanFilesForAgent.filter(file => file.sales_status === 'Interested').length;
 //       const salesNotInterestedCount = loanFilesForAgent.filter(file => file.sales_status === 'Not Interested').length;
-//       const sales_assign_date = loanFilesForAgent.sales_assign_date;
-
 
 //       const tvrPendingCount = loanFilesForAgent.filter(file => file.tvr_status === 'Pending').length;
 //       const tvrCompletedCount = loanFilesForAgent.filter(file => file.tvr_status === 'Completed').length;
@@ -3221,7 +3274,6 @@ const viewbankStatement = async (req, res) => {
 
 //       // Prepare the details for this sales agent
 //       return {
-
 //         sales_agent_id: agentId,
 //         sales_agent_name: salesAgentMap[agentId]?.name || 'Unknown',
 //         teamLeaderName: reportingToNameMap[salesAgentMap[agentId]?.reportingTo] || 'Unknown',
@@ -3236,7 +3288,7 @@ const viewbankStatement = async (req, res) => {
 //         approvalCompleted: approvalCompletedCount,
 //         disbursalPending: disbursalPendingCount,
 //         disbursalCompleted: disbursalCompletedCount,
-//         date:loanFilesForAgent[0].sales_assign_date
+//         date: loanFilesForAgent[0].sales_assign_date
 //       };
 //     });
 
@@ -3244,7 +3296,7 @@ const viewbankStatement = async (req, res) => {
 //     return res.status(200).json({
 //       success: true,
 //       message: 'Loan files fetched and status counts calculated successfully',
-//       data: response, // Return the response for each sales agent
+//       data: response,
 //     });
 //   } catch (error) {
 //     console.error('Error fetching loan files:', error);
@@ -3261,17 +3313,21 @@ const getLoanFilesByFilters = async (req, res) => {
   try {
     const { startDate, endDate, teamLeaderName, salesAgentName } = req.query;
 
+    // Initialize start and end dates if they are provided
+    let start, end;
+    if (startDate && endDate) {
+      start = new Date(startDate);
+      start.setHours(0, 0, 0, 0); // Start of the day
+
+      end = new Date(endDate);
+      end.setHours(23, 59, 59, 999); // End of the day
+    }
+
     // Build the query object based on provided filters
     let query = {};
 
-    // Handle date range filter
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0); // Start of the day
-
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999); // End of the day
-
+    // Handle date range filter if start and end dates are available
+    if (start && end) {
       query.sales_assign_date = {
         $gte: start,
         $lte: end
@@ -3280,11 +3336,11 @@ const getLoanFilesByFilters = async (req, res) => {
 
     // Fetch sales agent details if salesAgentName is provided
     if (salesAgentName) {
-      const agents = await user.find({ name: salesAgentName }, 'userId'); // Fetch userIds matching the sales agent's name
+      const agents = await user.find({ name: salesAgentName }, 'userId');
       const agentIds = agents.map(agent => agent.userId);
 
       if (agentIds.length > 0) {
-        query.sales_agent_id = { $in: agentIds }; // Add filter for sales_agent_id
+        query.sales_agent_id = { $in: agentIds };
       } else {
         return res.status(404).json({
           success: false,
@@ -3295,16 +3351,15 @@ const getLoanFilesByFilters = async (req, res) => {
 
     // Fetch team leader details if teamLeaderName is provided
     if (teamLeaderName) {
-      const teamLeaders = await user.find({ name: teamLeaderName }, 'userId'); // Fetch userIds matching the team leader's name
+      const teamLeaders = await user.find({ name: teamLeaderName }, 'userId');
       const leaderIds = teamLeaders.map(leader => leader.userId);
 
       if (leaderIds.length > 0) {
-        // Fetch sales agents reporting to this team leader
         const agents = await user.find({ reportingTo: { $in: leaderIds } }, 'userId');
         const agentIds = agents.map(agent => agent.userId);
 
         if (agentIds.length > 0) {
-          query.sales_agent_id = { $in: agentIds }; // Add filter for sales_agent_id
+          query.sales_agent_id = { $in: agentIds };
         } else {
           return res.status(404).json({
             success: false,
@@ -3319,7 +3374,6 @@ const getLoanFilesByFilters = async (req, res) => {
       }
     }
 
-    // Fetch filtered loan files from the database
     const loanFiles = await loanfilemodel.find(query).sort({ sales_assign_date: -1 });
 
     if (loanFiles.length === 0) {
@@ -3329,13 +3383,9 @@ const getLoanFilesByFilters = async (req, res) => {
       });
     }
 
-    // Get unique sales_agent_ids
     const salesAgentIds = [...new Set(loanFiles.map(file => file.sales_agent_id))];
-
-    // Fetch users whose userId matches salesAgentIds
     const users = await user.find({ userId: { $in: salesAgentIds } }, 'userId name reportingTo');
 
-    // Create a mapping of sales_agent_id to name and reportingTo user IDs
     const salesAgentMap = {};
     users.forEach(user => {
       salesAgentMap[user.userId] = {
@@ -3344,41 +3394,61 @@ const getLoanFilesByFilters = async (req, res) => {
       };
     });
 
-    // Create an array of reportingTo user IDs
     const reportingToIds = users.map(user => user.reportingTo).filter(Boolean);
-
-    // Fetch reportingTo users' names from User collection based on reportingTo user IDs
     const reportingToUsers = await user.find({ userId: { $in: reportingToIds } }, 'userId name');
 
-    // Create a mapping of reportingTo user ID to name
     const reportingToNameMap = {};
     reportingToUsers.forEach(user => {
       reportingToNameMap[user.userId] = user.name;
     });
 
-    // Initialize response structure for each sales agent
     const response = salesAgentIds.map(agentId => {
       const loanFilesForAgent = loanFiles.filter(file => file.sales_agent_id === agentId);
 
-      // Count records for each status for the current sales agent
-      const salesInterestedCount = loanFilesForAgent.filter(file => file.sales_status === 'Interested').length;
-      const salesNotInterestedCount = loanFilesForAgent.filter(file => file.sales_status === 'Not Interested').length;
+      const salesInterestedCount = loanFilesForAgent.filter(file => 
+        file.sales_status === 'Interested' && start && end && file.sales_assign_date >= start && file.sales_assign_date <= end
+      ).length;
 
-      const tvrPendingCount = loanFilesForAgent.filter(file => file.tvr_status === 'Pending').length;
-      const tvrCompletedCount = loanFilesForAgent.filter(file => file.tvr_status === 'Completed').length;
+      const salesNotInterestedCount = loanFilesForAgent.filter(file => 
+        file.sales_status === 'Not Interested' && start && end && file.sales_assign_date >= start && file.sales_assign_date <= end
+      ).length;
 
-      const cdrPendingCount = loanFilesForAgent.filter(file => file.cdr_status === 'Pending').length;
-      const cdrCompletedCount = loanFilesForAgent.filter(file => file.cdr_status === 'Completed').length;
+      const tvrPendingCount = loanFilesForAgent.filter(file => 
+        file.tvr_status === 'Pending' && start && end && file.tvr_assign_date >= start && file.tvr_assign_date <= end
+      ).length;
 
-      const bankLoginCount = loanFilesForAgent.filter(file => file.banklogin_status === 'Completed').length;
+      const tvrCompletedCount = loanFilesForAgent.filter(file => 
+        file.tvr_status === 'Completed' && start && end && file.tvr_action_date >= start && file.tvr_action_date <= end
+      ).length;
 
-      const approvalPendingCount = loanFilesForAgent.filter(file => file.approval_status === 'Pending').length;
-      const approvalCompletedCount = loanFilesForAgent.filter(file => file.approval_status === 'Completed').length;
+      const cdrPendingCount = loanFilesForAgent.filter(file => 
+        file.cdr_status === 'Pending' && start && end && file.cdr_assign_date >= start && file.cdr_assign_date <= end
+      ).length;
 
-      const disbursalPendingCount = loanFilesForAgent.filter(file => file.disbursal_status === 'Pending').length;
-      const disbursalCompletedCount = loanFilesForAgent.filter(file => file.disbursal_status === 'Completed').length;
+      const cdrCompletedCount = loanFilesForAgent.filter(file => 
+        file.cdr_status === 'Completed' && start && end && file.cdr_action_date >= start && file.cdr_action_date <= end
+      ).length;
 
-      // Prepare the details for this sales agent
+      const bankLoginCount = loanFilesForAgent.filter(file => 
+        file.banklogin_status === 'Completed' && start && end && file.banklogin_action_date >= start && file.banklogin_action_date <= end
+      ).length;
+
+      const approvalPendingCount = loanFilesForAgent.filter(file => 
+        file.approval_status === 'Pending' && start && end && file.approval_action_date >= start && file.approval_action_date <= end
+      ).length;
+
+      const approvalCompletedCount = loanFilesForAgent.filter(file => 
+        file.approval_status === 'Completed' && start && end && file.approval_action_date >= start && file.approval_action_date <= end
+      ).length;
+
+      const disbursalPendingCount = loanFilesForAgent.filter(file => 
+        file.disbursal_status === 'Pending' && start && end && file.disbursal_action_date >= start && file.disbursal_action_date <= end
+      ).length;
+
+      const disbursalCompletedCount = loanFilesForAgent.filter(file => 
+        file.disbursal_status === 'Completed' && start && end && file.disbursal_action_date >= start && file.disbursal_action_date <= end
+      ).length;
+
       return {
         sales_agent_id: agentId,
         sales_agent_name: salesAgentMap[agentId]?.name || 'Unknown',
@@ -3398,7 +3468,6 @@ const getLoanFilesByFilters = async (req, res) => {
       };
     });
 
-    // Return the aggregated data for each sales agent
     return res.status(200).json({
       success: true,
       message: 'Loan files fetched and status counts calculated successfully',
@@ -3413,6 +3482,8 @@ const getLoanFilesByFilters = async (req, res) => {
     });
   }
 };
+
+
 
 
 const getteamleaderperformance = async (req, res) => {

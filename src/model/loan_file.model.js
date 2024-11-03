@@ -30,6 +30,10 @@ const loanfilesSchema = new mongoose.Schema({
         type: Date,
         default:""
     },
+    sales_capture_date:{
+        type: Date,
+        default:""
+    },
     tvr_status: {
         type: String,
         default:""
@@ -43,6 +47,10 @@ const loanfilesSchema = new mongoose.Schema({
         default:""
     },
     tvr_assign_date:{
+        type: Date,
+        default:""
+    },
+    tvr_action_date:{
         type: Date,
         default:""
     },
@@ -62,6 +70,10 @@ const loanfilesSchema = new mongoose.Schema({
         type: Date,
         default:""
     },
+    cdr_action_date:{
+        type: Date,
+        default:""
+    },
     banklogin_status: {
         type: String,
         default:""
@@ -78,6 +90,10 @@ const loanfilesSchema = new mongoose.Schema({
         type: Date,
         default:""
     },
+    banklogin_action_date:{
+        type: Date,
+        default:""
+    },
     approval_status: {
         type: String,
         default:""
@@ -86,11 +102,19 @@ const loanfilesSchema = new mongoose.Schema({
         type: Date,
         default:""
     },
+    approval_action_date:{
+        type: Date,
+        default:""
+    },
     disbursal_status: {
         type: String,
         default:""
     },
     disbursal_assign_date:{
+        type: Date,
+        default:""
+    },
+    disbursal_action_date:{
         type: Date,
         default:""
     },

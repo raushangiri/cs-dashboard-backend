@@ -333,67 +333,13 @@ const sendEmailWithAttachment = (email, subject, text, attachments, cc) => {
 
 
 // API function (controller)
-const sendDocumentEmail = async (req, res) => {
-  const { email, subject, text, documentUrls, documentNames, cc } = req.body;
-
-  // Ensure the required fields are present
-  if (!email || !subject || !text || !documentUrls || !documentUrls.length || !documentNames || !documentNames.length) {
-    return res.status(400).json({ error: 'All fields are required: email, subject, text, documentUrls, documentNames' });
-  }
-
-  // Temporary file paths array for multiple attachments
-  const tempFilePaths = [];
-
-  try {
-    // Step 1: Download all documents
-    for (let i = 0; i < documentUrls.length; i++) {
-      const documentUrl = documentUrls[i];
-      const documentName = documentNames[i]; // Get the document name from the request
-      const tempFilePath = path.join(__dirname, '../temp', documentName); // Use documentName as the filename
-      await downloadFile(documentUrl, tempFilePath);
-      tempFilePaths.push(tempFilePath); // Save the file path for attachment
-    }
-
-    // Step 2: Send the email with multiple attachments
-    const emailInfo = await sendEmailWithAttachment(email, subject, text, tempFilePaths, cc);
-
-    // Step 3: Clean up by removing the downloaded files
-    tempFilePaths.forEach(filePath => {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    });
-
-    // Success response
-    res.json({
-      message: 'Email sent successfully!',
-      info: emailInfo,
-    });
-  } catch (error) {
-    // Cleanup in case of failure
-    tempFilePaths.forEach(filePath => {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    });
-
-    // Error response
-    res.status(500).json({
-      error: 'Error sending email or downloading file',
-      details: error.message,
-    });
-  }
-};
-
-// sendDocumentEmail = async (req, res) => {
- 
-//   const { email, subject, text, documentUrls, cc } = req.body;
+// const sendDocumentEmail = async (req, res) => {
+//   const { email, subject, text, documentUrls, documentNames, cc,_id } = req.body;
 
 //   // Ensure the required fields are present
-//   if (!email || !subject || !text || !documentUrls || !documentUrls.length) {
-//     return res.status(400).json({ error: 'All fields are required: email, subject, text, documentUrls' });
+//   if (!email || !subject || !text || !documentUrls || !documentUrls.length || !documentNames || !documentNames.length || _id) {
+//     return res.status(400).json({ error: 'All fields are required: email, subject, text, documentUrls, documentNames' });
 //   }
-
 
 //   // Temporary file paths array for multiple attachments
 //   const tempFilePaths = [];
@@ -402,7 +348,8 @@ const sendDocumentEmail = async (req, res) => {
 //     // Step 1: Download all documents
 //     for (let i = 0; i < documentUrls.length; i++) {
 //       const documentUrl = documentUrls[i];
-//       const tempFilePath = path.join(__dirname, '../temp', `document_${i}.pdf`);
+//       const documentName = documentNames[i]; // Get the document name from the request
+//       const tempFilePath = path.join(__dirname, '../temp', documentName); // Use documentName as the filename
 //       await downloadFile(documentUrl, tempFilePath);
 //       tempFilePaths.push(tempFilePath); // Save the file path for attachment
 //     }
@@ -437,6 +384,65 @@ const sendDocumentEmail = async (req, res) => {
 //     });
 //   }
 // };
+
+
+const sendDocumentEmail = async (req, res) => {
+  const { email, subject, text, documentUrls, documentNames, cc, _id } = req.body;
+
+  // Ensure the required fields are present
+  if (!email || !subject || !text || !documentUrls || !documentUrls.length || !documentNames || !documentNames.length || !_id) {
+    return res.status(400).json({ error: 'All fields are required: email, subject, text, documentUrls, documentNames, _id' });
+  }
+
+  // Temporary file paths array for multiple attachments
+  const tempFilePaths = [];
+
+  try {
+    // Step 1: Download all documents
+    for (let i = 0; i < documentUrls.length; i++) {
+      const documentUrl = documentUrls[i];
+      const documentName = documentNames[i];
+      const tempFilePath = path.join(__dirname, '../temp', documentName); 
+      await downloadFile(documentUrl, tempFilePath);
+      tempFilePaths.push(tempFilePath);
+    }
+
+    // Step 2: Send the email with multiple attachments
+    const emailInfo = await sendEmailWithAttachment(email, subject, text, tempFilePaths, cc);
+
+    // Step 3: Update document status in banklogin_details collection
+    await banklogin_details.updateOne(
+      { _id }, 
+      { $set: { document_status: 'document shared' } }
+    );
+
+    // Step 4: Clean up by removing the downloaded files
+    tempFilePaths.forEach(filePath => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+
+    // Success response
+    res.json({
+      message: 'Email sent successfully and document status updated!',
+      info: emailInfo,
+    });
+  } catch (error) {
+    // Cleanup in case of failure
+    tempFilePaths.forEach(filePath => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+
+    // Error response
+    res.status(500).json({
+      error: 'Error sending email, updating status, or downloading file',
+      details: error.message,
+    });
+  }
+};
 
 
 

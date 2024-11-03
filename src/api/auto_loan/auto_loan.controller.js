@@ -864,14 +864,36 @@ const createdesposition = async (req, res) => {
 
     switch (role) {
       case 'sales':
-        if (!loanFile.sales_agent_id.trim() && is_interested === 'Interested') {
-          updateData.sales_agent_id = userId;
-          updateData.sales_status = is_interested;
-          updateData.file_status = file_status;
-          updateData.sales_agent_name = userdetails.name
-          updateData.sales_assign_date = new Date();
-          updateNeeded = true;
+        // if (!loanFile.sales_agent_id.trim() && is_interested === 'Interested') {
+        //   updateData.sales_agent_id = userId;
+        //   updateData.sales_status = is_interested;
+        //   updateData.file_status = file_status;
+        //   updateData.sales_agent_name = userdetails.name
+        //   updateData.sales_assign_date = new Date();
+        //   updateNeeded = true;
+        // }
+        if (is_interested === 'Interested') {
+          const fifteenDaysAgo = new Date();
+          fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+        
+          // Check if sales_agent_id is empty and interest is marked as 'Interested'
+          if (!loanFile.sales_agent_id.trim()) {
+            updateData.sales_agent_id = userId;
+            updateData.sales_status = is_interested;
+            updateData.file_status = file_status;
+            updateData.sales_agent_name = userdetails.name;
+            updateData.sales_assign_date = new Date();
+            updateNeeded = true;
+          }
+          // Check if sales_assign_date is more than 15 days ago
+          else if (loanFile.sales_assign_date && loanFile.sales_assign_date < fifteenDaysAgo) {
+            updateData.sales_agent_name = userdetails.name;
+            updateData.sales_assign_date = new Date();
+            updateData.sales_agent_id = userId;
+            updateNeeded = true;
+          }
         }
+        
         else {
           updateData.file_status = file_status;
           updateNeeded = true;

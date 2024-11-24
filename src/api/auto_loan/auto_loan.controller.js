@@ -350,6 +350,7 @@ const generateFileNumber = async () => {
 };
 
 const uploadData = async (req, res) => {
+  console.log("api called")
   try {
     const data = req.body;
 
@@ -364,7 +365,7 @@ const uploadData = async (req, res) => {
 
       while (exists) {
         // Generate a 5-digit random number
-        fileNumber = Math.floor(10000 + Math.random() * 90000).toString(); // Ensures a 5-digit number
+        fileNumber = Math.floor(100000 + Math.random() * 900000).toString(); // Ensures a 5-digit number
 
         // Check if this file number already exists
         const fileExists = await overview_details.findOne({ file_number: fileNumber });
@@ -372,14 +373,11 @@ const uploadData = async (req, res) => {
           exists = false; // If no file exists with this number, exit the loop
         }
       }
-
       return fileNumber;
     };
-
     // Prepare data for database insertion with shared fileNumber
     const overviewDocs = await Promise.all(data.map(async (item) => {
       const fileNumber = await generateFileNumber(); // Generate unique file number for each record
-
       return {
         mobile_number: item["Customer Number"],
         previous_loan_bank_name: item["Bank Name"],

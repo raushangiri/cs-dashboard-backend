@@ -365,7 +365,7 @@ const uploadData = async (req, res) => {
 
       while (exists) {
         // Generate a 5-digit random number
-        fileNumber = Math.floor(100000 + Math.random() * 900000).toString(); // Ensures a 5-digit number
+        fileNumber = Math.floor(10000000 + Math.random() * 90000000).toString(); // Ensures a 5-digit number
 
         // Check if this file number already exists
         const fileExists = await overview_details.findOne({ file_number: fileNumber });

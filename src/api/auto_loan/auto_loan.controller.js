@@ -571,7 +571,7 @@ const createpersonadetails = async (req, res) => {
     required_amount,
     mobile_number,
     customerName,
-    name,
+    name, // This field needs to be updated in overview_details_model as well
     occupation_type,
     nature_of_business,
     service_type,
@@ -601,9 +601,9 @@ const createpersonadetails = async (req, res) => {
   } = req.body;
 
   try {
-    // Check if a personal details document with the given file_number already exists
+    // Step 1: Update or insert into personal_details_model
     const updatedPersonalDetails = await personal_details_model.findOneAndUpdate(
-      { file_number },  // Search criteria
+      { file_number }, // Search criteria
       {
         $set: {
           is_interested,
@@ -611,8 +611,8 @@ const createpersonadetails = async (req, res) => {
           loan_category,
           required_amount,
           mobile_number,
-          customerName,
-          name,
+          customerName:name,
+          name:customerName, // Updated name field
           occupation_type,
           nature_of_business,
           service_type,
@@ -641,18 +641,128 @@ const createpersonadetails = async (req, res) => {
           note
         }
       },
-      { new: true, upsert: true }  // Options: new returns the updated document, upsert creates if not found
+      { new: true, upsert: true } // Options: new=true returns updated doc, upsert=true inserts if not found
     );
 
-    // Respond with success
+    // Step 2: Update name in overview_details_model if it exists
+    if (customerName || name) {
+      
+      const updatedOverviewDetails = await overview_details.findOneAndUpdate(
+        { file_number }, // Match the same file_number
+        {
+          $set: {
+            customer_name:customerName// Update the 'name' field
+          }
+        },
+        { new: true, upsert: false } // Do not upsert here unless needed
+      );
+
+    }
+
+
+
+    // Respond with success message
     if (updatedPersonalDetails) {
-      res.status(200).json({ message: 'details updated successfully' });
+      res.status(200).json({ message: 'Details updated successfully' });
     }
   } catch (error) {
     // Handle any errors
     res.status(500).json({ message: 'Error saving personal details', error: error.message });
   }
 };
+
+
+// const createpersonadetails = async (req, res) => {
+//   const { file_number } = req.params;
+//   const {
+//     is_interested,
+//     type_of_loan,
+//     loan_category,
+//     required_amount,
+//     mobile_number,
+//     customerName,
+//     name,
+//     occupation_type,
+//     nature_of_business,
+//     service_type,
+//     type_of_resident,
+//     permanent_address,
+//     permanent_address_landmark,
+//     official_email_id,
+//     personal_email_id,
+//     office_name,
+//     date_of_birth,
+//     alternate_number,
+//     mother_name,
+//     father_name,
+//     marital_status,
+//     spouse_name,
+//     current_address,
+//     years_at_current_residence,
+//     total_time_in_delhi,
+//     office_address,
+//     office_address_landmark,
+//     years_at_current_organization,
+//     gst_itr_filed,
+//     gst_and_itr_income,
+//     inhand_salary,
+//     other_income,
+//     note
+//   } = req.body;
+
+//   try {
+//     // Check if a personal details document with the given file_number already exists
+//     const updatedPersonalDetails = await personal_details_model.findOneAndUpdate(
+//       { file_number },  // Search criteria
+//       {
+//         $set: {
+//           is_interested,
+//           type_of_loan,
+//           loan_category,
+//           required_amount,
+//           mobile_number,
+//           customerName,
+//           name,
+//           occupation_type,
+//           nature_of_business,
+//           service_type,
+//           type_of_resident,
+//           permanent_address,
+//           permanent_address_landmark,
+//           official_email_id,
+//           personal_email_id,
+//           office_name,
+//           date_of_birth,
+//           alternate_number,
+//           mother_name,
+//           father_name,
+//           marital_status,
+//           spouse_name,
+//           current_address,
+//           years_at_current_residence,
+//           total_time_in_delhi,
+//           office_address,
+//           office_address_landmark,
+//           years_at_current_organization,
+//           gst_itr_filed,
+//           gst_and_itr_income,
+//           inhand_salary,
+//           other_income,
+//           note
+//         }
+//       },
+//       { new: true, upsert: true }  // Options: new returns the updated document, upsert creates if not found
+//     );
+
+//     // Respond with success
+//     if (updatedPersonalDetails) {
+//       res.status(200).json({ message: 'details updated successfully' });
+//     }
+//   } catch (error) {
+//     // Handle any errors
+//     res.status(500).json({ message: 'Error saving personal details', error: error.message });
+//   }
+// };
 
 const getpersonadetails = async (req, res) => {
   const { file_number } = req.params;

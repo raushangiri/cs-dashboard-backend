@@ -29,38 +29,62 @@ const port = process.env.port;
 let cpuCount = os.cpus().length;
 const email_link = process.env.verified_uri;
 const { connectDB, disconnectDB } = require("./src/db/connection");
-connectDB(function (err, db) {
-  if (err) {
-   
-    console.error("Error occurred while connecting to MongoDB", err);
-    return;
+
+
+
+const startApp = async () => {
+  try {
+    await connectDB(); // ✅ Connect to MongoDB
+
+    const collection = mongoose.connection.collection("documents");
+
+    // ✅ Insert document
+    await collection.insertOne({ a: 1 });
+    console.log("✅ Document inserted successfully");
+
+    // ✅ Close connection only if needed
+    await disconnectDB();
+  } catch (err) {
+    console.error("❌ Error:", err);
   }
+};
 
-  const collection = db.collection("documents");
-  collection.insertOne({ a: 1 }, function (err, result) {
-    if (err) {
-      console.error("Error occurred while inserting document", err);
-      disconnectDB(function (disconnectErr) {
-        if (disconnectErr) {
-          console.error(
-            "Error occurred while disconnecting from MongoDB",
-            disconnectErr
-          );
-        }
-      });
-      return;
-    }
+// Run the function
+startApp();
 
-    disconnectDB(function (disconnectErr) {
-      if (disconnectErr) {
-        console.error(
-          "Error occurred while disconnecting from MongoDB",
-          disconnectErr
-        );
-      }
-    });
-  });
-});
+
+// connectDB(function (err, db) {
+//   if (err) {
+   
+//     console.error("Error occurred while connecting to MongoDB", err);
+//     return;
+//   }
+
+//   const collection = db.collection("documents");
+//   collection.insertOne({ a: 1 }, function (err, result) {
+//     if (err) {
+//       console.error("Error occurred while inserting document", err);
+//       disconnectDB(function (disconnectErr) {
+//         if (disconnectErr) {
+//           console.error(
+//             "Error occurred while disconnecting from MongoDB",
+//             disconnectErr
+//           );
+//         }
+//       });
+//       return;
+//     }
+
+//     disconnectDB(function (disconnectErr) {
+//       if (disconnectErr) {
+//         console.error(
+//           "Error occurred while disconnecting from MongoDB",
+//           disconnectErr
+//         );
+//       }
+//     });
+//   });
+// });
 function startexpress() {
   const app = express();
   app.use(express.json({ limit: '2mb' }));

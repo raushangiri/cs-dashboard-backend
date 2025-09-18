@@ -1832,19 +1832,19 @@ const getLoanFilesByUserId = async (req, res) => {
       // Apply the correct date field based on the role
       switch(userRecord.role) {
         case 'sales':
-          query.sales_assign_date = { $gte: start, $lte: end };
+          query.sales_action_date = { $gte: start, $lte: end };
           break;
         case 'TVR':
-          query.tvr_assign_date = { $gte: start, $lte: end };
+          query.tvr_action_date = { $gte: start, $lte: end };
           break;
         case 'CDR':
-          query.cdr_assign_date = { $gte: start, $lte: end };
+          query.cdr_action_date = { $gte: start, $lte: end };
           break;
         case 'Bank login':
-          query.banklogin_assign_date = { $gte: start, $lte: end };
+          query.banklogin_action_date = { $gte: start, $lte: end };
           break;
-          case 'admin':
-          query.sales_assign_date = { $gte: start, $lte: end };
+        case 'admin':
+          query.sales_action_date = { $gte: start, $lte: end };
           break;
       }
     }

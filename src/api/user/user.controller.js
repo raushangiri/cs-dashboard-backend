@@ -132,27 +132,97 @@ const deleteUser = async (req, res) => {
 
 const getalluser = async (req, res) => {
   try {
-    // Fetch all users from the User collection, including only the userId, name, and role fields
-    const users = await user.find().select('userId name role reportingTo department');
+    // Extract filters from query string
+    const filters = {};
+    if (req.query.status) filters.status = req.query.status;
+   
 
-    // Alternatively, you can manually transform each user document to include only the desired fields
-    // const users = await User.find();
-    // const filteredUsers = users.map(user => ({
-    //   userId: user.userId,
-    //   name: user.name,
-    //   role: user.role
-    // }));
+    // Fetch users with applied filters
+    const users = await user
+      .find(filters)
+      .select("userId name role reportingTo department status");
 
-    res.status(200).json({Data:users}); // Send the users as a JSON response
+    res.status(200).json({ Data: users });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch users' });
+    res.status(500).json({ error: "Failed to fetch users" });
   }
 };
 
+
+// const login = async (req, res) => {
+//   try {
+//     const { userId, password, role } = req.body; // Extract role from request body
+//     const userdata = await user.findOne({ userId, role }); // Match both userId and role
+
+//     // Check if user exists
+//     if (!userdata) {
+//       return res.status(400).send({ message: "Invalid userId or role" });
+//     }
+
+//     // Check if password matches
+//     const isMatch = await bcrypt.compare(password, userdata.password);
+//     if (!isMatch) {
+//       return res.status(400).send({ message: "Invalid userId, password, or role" });
+//     }
+
+//     // Check if the user needs to change their password
+//     if (!userdata.hasChangedPassword) {
+//       return res.status(200).send({
+//         message: "Password change required",
+//         userId: userdata.userId,
+//         status: 200,
+//       });
+//     }
+
+//     // Generate JWT token
+//     const token = jwt.sign(
+//       { userId: userdata.userId, role: userdata.role }, // Include role in token
+//       "yourSecretKey",
+//       { expiresIn: "1h" }
+//     );
+
+//     return res.status(200).send({
+//       message: "Login successful",
+//       token,
+//       userId: userdata.userId, // Send back the userId
+//       role: userdata.role, // Send back the role
+//       status: 200,
+//     });
+//   } catch (error) {
+//     return res.status(500).send({ message: error.message, status: 500 });
+//   }
+// };
+
+// const changePassword = async (req, res) => {
+//   console.log("API called")
+//   try {
+//     const { userId, password, newPassword } = req.body;
+//     const userdata = await user.findOne({ userId });
+//     if (!userdata) {
+//       return res.status(400).send({ message: "User not found", status: 400 });
+//     }
+//     const isMatch = await bcrypt.compare(password, userdata.password);
+//     if (!isMatch) {
+//       return res.status(400).send({ message: "Current password is incorrect", status: 400 });
+//     }
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+//     userdata.password = hashedNewPassword;
+//     userdata.hasChangedPassword = true;  
+//     await userdata.save();
+//     return res.status(200).send({
+//       message: "Password updated successfully",
+//       status: 200,
+//     });
+//   } catch (error) {
+//     return res.status(500).send({ message: error.message, status: 500 });
+//   }
+// };
+
 const login = async (req, res) => {
   try {
-    const { userId, password, role } = req.body; // Extract role from request body
-    const userdata = await user.findOne({ userId, role }); // Match both userId and role
+    const { userId, password, role } = req.body; 
+    const userdata = await user.findOne({ userId, role });
 
     // Check if user exists
     if (!userdata) {
@@ -165,7 +235,7 @@ const login = async (req, res) => {
       return res.status(400).send({ message: "Invalid userId, password, or role" });
     }
 
-    // Check if the user needs to change their password
+    // Check if the user has never changed password
     if (!userdata.hasChangedPassword) {
       return res.status(200).send({
         message: "Password change required",
@@ -174,9 +244,24 @@ const login = async (req, res) => {
       });
     }
 
+    // ✅ Check if password is older than 30 days
+    if (userdata.passwordChangedAt) {
+      const lastChanged = new Date(userdata.passwordChangedAt);
+      const now = new Date();
+      const diffInDays = Math.floor((now - lastChanged) / (1000 * 60 * 60 * 24));
+
+      if (diffInDays > 30) {
+        return res.status(200).send({
+          message: "Password expired, please change your password",
+          userId: userdata.userId,
+          status: 200,
+        });
+      }
+    }
+
     // Generate JWT token
     const token = jwt.sign(
-      { userId: userdata.userId, role: userdata.role }, // Include role in token
+      { userId: userdata.userId, role: userdata.role },
       "yourSecretKey",
       { expiresIn: "1h" }
     );
@@ -184,8 +269,8 @@ const login = async (req, res) => {
     return res.status(200).send({
       message: "Login successful",
       token,
-      userId: userdata.userId, // Send back the userId
-      role: userdata.role, // Send back the role
+      userId: userdata.userId,
+      role: userdata.role,
       status: 200,
     });
   } catch (error) {
@@ -193,33 +278,36 @@ const login = async (req, res) => {
   }
 };
 
+
 const changePassword = async (req, res) => {
-  console.log("API called")
   try {
     const { userId, password, newPassword } = req.body;
-
-    // Find the user by userId
     const userdata = await user.findOne({ userId });
-console.log(userdata,"2954")
+
     if (!userdata) {
       return res.status(400).send({ message: "User not found", status: 400 });
     }
 
-    // Compare the provided current password with the stored password
+    // Check current password is correct
     const isMatch = await bcrypt.compare(password, userdata.password);
     if (!isMatch) {
       return res.status(400).send({ message: "Current password is incorrect", status: 400 });
     }
 
-    // Generate a new hashed password
+    // 🚫 Check if new password is same as old password
+    const isSameAsOld = await bcrypt.compare(newPassword, userdata.password);
+    if (isSameAsOld) {
+      return res.status(400).send({ message: "New password cannot be the same as the old password", status: 400 });
+    }
+
+    // Hash and save new password
     const salt = await bcrypt.genSalt(10);
     const hashedNewPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update the user's password
     userdata.password = hashedNewPassword;
-    userdata.hasChangedPassword = true;  // Mark as password changed
+    userdata.hasChangedPassword = true;
+    userdata.passwordChangedAt = new Date(); // update timestamp
 
-    // Save the updated user data
     await userdata.save();
 
     return res.status(200).send({
@@ -231,37 +319,65 @@ console.log(userdata,"2954")
   }
 };
 
+
+// const resetPassword = async (req, res) => {
+//   try {
+//     // Step 1: Retrieve userId from request parameters
+//     const { userId } = req.params;
+
+//     // Step 2: Find the user by userId in the database
+//     const userdata = await user.findOne({ userId:userId });
+
+//     if (!userdata) {
+//       return res.status(400).send({ message: "User not found", status: 400 });
+//     }
+
+//     // Step 3: Convert userId into password format
+//     // You can adjust the complexity of this conversion logic as needed.
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedNewPassword = await bcrypt.hash(userId, salt); // Using userId as the password source
+
+//     // Step 4: Update the user's password and hasResetPassword flag
+//     userdata.password = hashedNewPassword;
+//     userdata.hasChangedPassword = false;  // Mark as password reset
+
+//     // Step 5: Save the updated user data in the database
+//     await userdata.save();
+
+//     // Return success response
+//     return res.status(200).send({
+//       message: "Password has been reset successfully",
+//       status: 200,
+//     });
+//   } catch (error) {
+//     // Handle any server error
+//     return res.status(500).send({ message: error.message, status: 500 });
+//   }
+// };
+
 const resetPassword = async (req, res) => {
   try {
-    // Step 1: Retrieve userId from request parameters
     const { userId } = req.params;
-
-    // Step 2: Find the user by userId in the database
-    const userdata = await user.findOne({ userId:userId });
+    const userdata = await user.findOne({ userId });
 
     if (!userdata) {
       return res.status(400).send({ message: "User not found", status: 400 });
     }
 
-    // Step 3: Convert userId into password format
-    // You can adjust the complexity of this conversion logic as needed.
     const salt = await bcrypt.genSalt(10);
-    const hashedNewPassword = await bcrypt.hash(userId, salt); // Using userId as the password source
+    const hashedNewPassword = await bcrypt.hash(userId, salt);
 
-    // Step 4: Update the user's password and hasResetPassword flag
     userdata.password = hashedNewPassword;
-    userdata.hasChangedPassword = false;  // Mark as password reset
+    userdata.hasChangedPassword = false;
+    userdata.passwordChangedAt = new Date(); // 👈 reset timestamp too
 
-    // Step 5: Save the updated user data in the database
     await userdata.save();
 
-    // Return success response
     return res.status(200).send({
       message: "Password has been reset successfully",
       status: 200,
     });
   } catch (error) {
-    // Handle any server error
     return res.status(500).send({ message: error.message, status: 500 });
   }
 };

@@ -611,8 +611,8 @@ const createpersonadetails = async (req, res) => {
           loan_category,
           required_amount,
           mobile_number,
-          customerName:name,
-          name:customerName, // Updated name field
+          customerName: name,
+          name: customerName, // Updated name field
           occupation_type,
           nature_of_business,
           service_type,
@@ -646,12 +646,12 @@ const createpersonadetails = async (req, res) => {
 
     // Step 2: Update name in overview_details_model if it exists
     if (customerName || name) {
-      
+
       const updatedOverviewDetails = await overview_details.findOneAndUpdate(
         { file_number }, // Match the same file_number
         {
           $set: {
-            customer_name:customerName// Update the 'name' field
+            customer_name: customerName// Update the 'name' field
           }
         },
         { new: true, upsert: false } // Do not upsert here unless needed
@@ -968,22 +968,13 @@ const createdesposition = async (req, res) => {
     let updateData = {};
     let updateNeeded = false;
 
-    
+
 
     switch (role) {
       case 'sales':
-        // if (!loanFile.sales_agent_id.trim() && is_interested === 'Interested') {
-        //   updateData.sales_agent_id = userId;
-        //   updateData.sales_status = is_interested;
-        //   updateData.file_status = file_status;
-        //   updateData.sales_agent_name = userdetails.name
-        //   updateData.sales_assign_date = new Date();
-        //   updateNeeded = true;
-        // }
         if (is_interested === 'Interested') {
           const fifteenDaysAgo = new Date();
           fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
-        
           // Check if sales_agent_id is empty and interest is marked as 'Interested'
           if (!loanFile.sales_agent_id.trim()) {
             updateData.sales_agent_id = userId;
@@ -1001,15 +992,24 @@ const createdesposition = async (req, res) => {
             updateNeeded = true;
           }
         }
-        
         else {
           updateData.file_status = file_status;
           updateNeeded = true;
+        }
+         if (file_status === 'details_not_completed') {
+          updateData.tvr_status = 'Pending';
+          updateNeeded = true;
+          updateData.tvr_assign_date = new Date();
         }
         if (file_status === 'process_to_tvr') {
           updateData.tvr_status = 'Pending';
           updateNeeded = true;
           updateData.tvr_assign_date = new Date();
+        }
+        if (file_status === 'process_to_cdr') {
+          updateData.cdr_status = 'Pending';
+          updateNeeded = true;
+          updateData.cdr_assign_date = new Date();
         }
         break;
       case 'TVR':
@@ -1026,24 +1026,26 @@ const createdesposition = async (req, res) => {
           updateData.cdr_status = 'Pending';
           updateData.cdr_assign_date = new Date();
           updateData.tvr_status = 'Completed';
-          updateData.tvr_action_date=new Date();
+          updateData.tvr_action_date = new Date();
           updateNeeded = true;
         }
         if (file_status === 'tvr_rejected') {
           updateData.tvr_status = 'Rejected';
-          updateData.tvr_action_date=new Date();
+          updateData.tvr_action_date = new Date();
 
           updateNeeded = true;
         }
-        
+        if (file_status === 'reassigned_to_salesagent') {
+          updateData.tvr_status = 'reassigned_to_salesagent';
+          updateData.tvr_action_date = new Date();
+          updateNeeded = true;
+        }
         break;
       case 'CDR':
         if (!loanFile.cdr_agent_id.trim()) {
           updateData.cdr_agent_id = userId;
           updateData.cdr_agent_name = userdetails.name
-
           updateData.file_status = file_status;
-
           updateNeeded = true;
         } else {
           // updateData.file_status = file_status;
@@ -1058,6 +1060,11 @@ const createdesposition = async (req, res) => {
         }
         if (file_status === 'cdr_rejected') {
           updateData.cdr_status = 'Rejected';
+          updateData.cdr_action_date = new Date();
+          updateNeeded = true;
+        }
+         if (file_status === 'reassigned_to_salesagent') {
+          updateData.cdr_status = 'reassigned_to_salesagent';
           updateData.cdr_action_date = new Date();
           updateNeeded = true;
         }
@@ -1078,12 +1085,21 @@ const createdesposition = async (req, res) => {
           updateData.approval_status = 'Pending';
           updateData.approval_assign_date = new Date();
           updateData.banklogin_action_date = new Date();
-
           updateData.banklogin_status = 'Completed';
           updateNeeded = true;
         }
         if (file_status === 'bank_login_rejected') {
           updateData.banklogin_status = 'Rejected';
+          updateData.banklogin_action_date = new Date();
+          updateNeeded = true;
+        }
+          if (file_status === 'bank_login_underprocess') {
+          updateData.banklogin_status = 'bank_login_underprocess';
+          updateData.banklogin_action_date = new Date();
+          updateNeeded = true;
+        }
+            if (file_status === 'reassigned_to_salesagent') {
+          updateData.banklogin_status = 'reassigned_to_salesagent';
           updateData.banklogin_action_date = new Date();
           updateNeeded = true;
         }
@@ -1104,7 +1120,7 @@ const createdesposition = async (req, res) => {
       });
     } else {
       return res.status(200).json({
-        message: 'Disposition created, but agent ID was not updated as it is already assigned or contains only spaces',
+        message: 'Disposition created, but agent ID was not updated as it is already assigned',
         data: newDisposition
       });
     }
@@ -1659,7 +1675,7 @@ const getLoanfiledetailsbyfilenumber = async (req, res) => {
 //         const end = new Date(endDate);
 //         end.setHours(23, 59, 59, 999);
 //         query.tvr_assign_date = { $gte: start, $lte: end };
-        
+
 //       }
 //       else if (userRecord.role === 'CDR') {
 //         const start = new Date(startDate);
@@ -1667,7 +1683,7 @@ const getLoanfiledetailsbyfilenumber = async (req, res) => {
 //         const end = new Date(endDate);
 //         end.setHours(23, 59, 59, 999);
 //         query.cdr_assign_date = { $gte: start, $lte: end };
-        
+
 //       }
 //       else if (userRecord.role === 'Bank login') {
 //         const start = new Date(startDate);
@@ -1675,7 +1691,7 @@ const getLoanfiledetailsbyfilenumber = async (req, res) => {
 //         const end = new Date(endDate);
 //         end.setHours(23, 59, 59, 999);
 //         query.banklogin_assign_date = { $gte: start, $lte: end };
-        
+
 //       }
 //     }
 
@@ -1792,7 +1808,7 @@ const getLoanFilesByUserId = async (req, res) => {
     let query = {};
 
     // Construct the query based on the user's role
-    switch(userRecord.role) {
+    switch (userRecord.role) {
       case 'sales':
         query = { sales_agent_id: sanitizedUserId };
         break;
@@ -1830,7 +1846,7 @@ const getLoanFilesByUserId = async (req, res) => {
       end.setUTCHours(23, 59, 59, 999);
 
       // Apply the correct date field based on the role
-      switch(userRecord.role) {
+      switch (userRecord.role) {
         case 'sales':
           query.sales_action_date = { $gte: start, $lte: end };
           break;
@@ -2005,7 +2021,7 @@ const admindashboardcount = async (req, res) => {
         }
       }
     ]);
-    
+
     // Extract counts from the aggregation result
     const {
       pendingtvrCount = 0,
@@ -2465,7 +2481,7 @@ const getTvrDocumentsCountByUserId = async (req, res) => {
       tvr_agent_id: sanitizedUserId,
       ...dateFilter // Apply date filter here
     });
-    console.log(sanitizedUserId,"sanitizedUserId")
+    console.log(sanitizedUserId, "sanitizedUserId")
 
     // Count of Completed loan files
     const tvrCount = await loanfilemodel.countDocuments({
@@ -2484,7 +2500,7 @@ const getTvrDocumentsCountByUserId = async (req, res) => {
             { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
             { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } }
           ],
-          ...dateFilter 
+          ...dateFilter
         }
       },
       {
@@ -3265,7 +3281,7 @@ const getbankStatement = async (req, res) => {
 
 const viewbankStatement = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     const bankStatementData = await BankStatementmodel.findById(id);
 
     if (!bankStatementData) {
@@ -3535,47 +3551,47 @@ const getLoanFilesByFilters = async (req, res) => {
     const response = salesAgentIds.map(agentId => {
       const loanFilesForAgent = loanFiles.filter(file => file.sales_agent_id === agentId);
 
-      const salesInterestedCount = loanFilesForAgent.filter(file => 
+      const salesInterestedCount = loanFilesForAgent.filter(file =>
         file.sales_status === 'Interested' && start && end && file.sales_assign_date >= start && file.sales_assign_date <= end
       ).length;
 
-      const salesNotInterestedCount = loanFilesForAgent.filter(file => 
+      const salesNotInterestedCount = loanFilesForAgent.filter(file =>
         file.sales_status === 'Not Interested' && start && end && file.sales_assign_date >= start && file.sales_assign_date <= end
       ).length;
 
-      const tvrPendingCount = loanFilesForAgent.filter(file => 
+      const tvrPendingCount = loanFilesForAgent.filter(file =>
         file.tvr_status === 'Pending' && start && end && file.tvr_assign_date >= start && file.tvr_assign_date <= end
       ).length;
 
-      const tvrCompletedCount = loanFilesForAgent.filter(file => 
+      const tvrCompletedCount = loanFilesForAgent.filter(file =>
         file.tvr_status === 'Completed' && start && end && file.tvr_action_date >= start && file.tvr_action_date <= end
       ).length;
 
-      const cdrPendingCount = loanFilesForAgent.filter(file => 
+      const cdrPendingCount = loanFilesForAgent.filter(file =>
         file.cdr_status === 'Pending' && start && end && file.cdr_assign_date >= start && file.cdr_assign_date <= end
       ).length;
 
-      const cdrCompletedCount = loanFilesForAgent.filter(file => 
+      const cdrCompletedCount = loanFilesForAgent.filter(file =>
         file.cdr_status === 'Completed' && start && end && file.cdr_action_date >= start && file.cdr_action_date <= end
       ).length;
 
-      const bankLoginCount = loanFilesForAgent.filter(file => 
+      const bankLoginCount = loanFilesForAgent.filter(file =>
         file.banklogin_status === 'Completed' && start && end && file.banklogin_action_date >= start && file.banklogin_action_date <= end
       ).length;
 
-      const approvalPendingCount = loanFilesForAgent.filter(file => 
+      const approvalPendingCount = loanFilesForAgent.filter(file =>
         file.approval_status === 'Pending' && start && end && file.approval_action_date >= start && file.approval_action_date <= end
       ).length;
 
-      const approvalCompletedCount = loanFilesForAgent.filter(file => 
+      const approvalCompletedCount = loanFilesForAgent.filter(file =>
         file.approval_status === 'Completed' && start && end && file.approval_action_date >= start && file.approval_action_date <= end
       ).length;
 
-      const disbursalPendingCount = loanFilesForAgent.filter(file => 
+      const disbursalPendingCount = loanFilesForAgent.filter(file =>
         file.disbursal_status === 'Pending' && start && end && file.disbursal_action_date >= start && file.disbursal_action_date <= end
       ).length;
 
-      const disbursalCompletedCount = loanFilesForAgent.filter(file => 
+      const disbursalCompletedCount = loanFilesForAgent.filter(file =>
         file.disbursal_status === 'Completed' && start && end && file.disbursal_action_date >= start && file.disbursal_action_date <= end
       ).length;
 
@@ -4075,7 +4091,7 @@ const getbanklogindetailsbyid = async (req, res) => {
   }
 };
 
-  
+
 
 
 

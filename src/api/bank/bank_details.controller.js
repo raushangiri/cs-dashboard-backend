@@ -1,6 +1,8 @@
 const bank_details = require("../../model/bank.model");
 const documents = require("../../model/document.model");
 const banklogin_details = require("../../model/banklogin.model");
+const createbank_details = require("../../model/bank.model");
+
 const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
@@ -8,6 +10,51 @@ const https = require('https');
 
 const fileUrl = 'https://firebasestorage.googleapis.com/v0/b/jbj-fintech.appspot.com/o/eel_api_docs.xlsx?alt=media';
 const filePath = './document.pdf';
+
+
+
+const createbankmaster =async (req, res) => {
+  try {
+    const {
+      Loan_Type,
+      Bank_Name,
+      rm1_name,
+      rm1_contact_number,
+      rm2_name,
+      rm2_contact_number,
+      email_1,
+      email_2,
+      email_3,
+    } = req.body;
+console.log(req.body);
+    const newBank = new createbank_details({
+      Loan_Type,
+      Bank_Name,
+      rm1_name,
+      rm1_contact_number,
+      rm2_name,
+      rm2_contact_number,
+      email_1,
+      email_2,
+      email_3,
+    });
+    await newBank.save();
+    res.status(201).json({
+      success: true,
+      message: "Bank details added successfully",
+      data: newBank,
+    });
+  } catch (err) {
+    console.error("Error adding bank details:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: err.message,
+    });
+  }
+}
+
+
 
 const get_rmDetails = async (req, res) => {
   try {
@@ -111,8 +158,6 @@ const createBankDetail = async (req, res) => {
       document_status,
       remarks
     } = req.body;
-
-    // If bank_login_status is "No", call_status, reason_for_notlogin, and remarks are required
     if (bank_login_status === 'No') {
       if (!call_status || !reason_for_notlogin || !remarks) {
         return res.status(400).json({
@@ -120,8 +165,6 @@ const createBankDetail = async (req, res) => {
         });
       }
     }
-
-    // If bank_login_status is "Yes", the following fields are required
     if (bank_login_status === 'Yes') {
       if (!bank_name || !rm1_name || !rm1_contact_number || !email_1 || !document_status || !remarks) {
         return res.status(400).json({
@@ -129,8 +172,6 @@ const createBankDetail = async (req, res) => {
         });
       }
     }
-
-    // Create a new BankDetail entry
     const bankDetail = new banklogin_details({
       userId,
       file_number,
@@ -148,10 +189,7 @@ const createBankDetail = async (req, res) => {
       document_status: bank_login_status === 'Yes' ? document_status : 'Not Ready',
       remarks
     });
-
-    // Save the bank details to the database
     await bankDetail.save();
-
     return res.status(201).json({
       message: 'Bank details saved successfully',
       bankDetail
@@ -388,17 +426,11 @@ const sendEmailWithAttachment = (email, subject, text, attachments, cc) => {
 
 const sendDocumentEmail = async (req, res) => {
   const { email, subject, text, documentUrls, documentNames, cc, _id } = req.body;
-
-  // Ensure the required fields are present
   if (!email || !subject || !text || !documentUrls || !documentUrls.length || !documentNames || !documentNames.length || !_id) {
     return res.status(400).json({ error: 'All fields are required: email, subject, text, documentUrls, documentNames, _id' });
   }
-
-  // Temporary file paths array for multiple attachments
   const tempFilePaths = [];
-
   try {
-    // Step 1: Download all documents
     for (let i = 0; i < documentUrls.length; i++) {
       const documentUrl = documentUrls[i];
       const documentName = documentNames[i];
@@ -406,37 +438,26 @@ const sendDocumentEmail = async (req, res) => {
       await downloadFile(documentUrl, tempFilePath);
       tempFilePaths.push(tempFilePath);
     }
-
-    // Step 2: Send the email with multiple attachments
     const emailInfo = await sendEmailWithAttachment(email, subject, text, tempFilePaths, cc);
-
-    // Step 3: Update document status in banklogin_details collection
     await banklogin_details.updateOne(
       { _id }, 
       { $set: { document_status: 'document shared' } }
     );
-
-    // Step 4: Clean up by removing the downloaded files
     tempFilePaths.forEach(filePath => {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
     });
-
-    // Success response
     res.json({
       message: 'Email sent successfully and document status updated!',
       info: emailInfo,
     });
   } catch (error) {
-    // Cleanup in case of failure
     tempFilePaths.forEach(filePath => {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
     });
-
-    // Error response
     res.status(500).json({
       error: 'Error sending email, updating status, or downloading file',
       details: error.message,
@@ -454,5 +475,6 @@ module.exports = {
     createBankDetail,
     getbanklogindetails,
     sendDocumentEmail,
-    deleteBankDetail
+    deleteBankDetail,
+    createbankmaster
     };

@@ -8,7 +8,8 @@ const {
     createBankDetail,
     getbanklogindetails,
     sendDocumentEmail,
-    deleteBankDetail
+    deleteBankDetail,
+    createbankmaster
 } = require("./bank_details.controller");
 
 router.post("/getrmDetails", get_rmDetails);
@@ -20,8 +21,6 @@ router.get("/getbanklogindetails/:file_number", getbanklogindetails);
 router.post("/sendEmailWithAttachment", sendDocumentEmail);
 // router.get("/getbanklogindetailsbyid ", getbanklogindetailsbyid);
 router.delete("/deleteBankDetail/:_id", deleteBankDetail);
-
-
-
+router.post("/createbankmaster", createbankmaster);
 
 module.exports = router;

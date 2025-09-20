@@ -61,10 +61,11 @@ const BankDetailSchema = new mongoose.Schema({
     remarks: {
         type: String,
         default: ''
-    }
-}, {
+    },
     createdAt: { type: Date, default: Date.now }
-});
+
+}
+);
 
 const BankDetail = mongoose.model('banklogindetail', BankDetailSchema);
 

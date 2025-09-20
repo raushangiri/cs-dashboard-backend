@@ -54,7 +54,51 @@ console.log(req.body);
   }
 }
 
+const updatebankmaster= async (req, res) => {
+  try {
+    const {
+      id,
+      rm1_name,
+      rm1_contact_number,
+      rm2_name,
+      rm2_contact_number,
+      email_1,
+      email_2,
+      email_3,
+    } = req.body;
+// console.log(req.body,"body");
+    const updatedBank = await createbank_details.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          rm1_name,
+          rm1_contact_number,
+          rm2_name,
+          rm2_contact_number,
+          email_1,
+          email_2,
+          email_3,
+        },
+      },
+      { new: true } 
+    );
 
+    if (!updatedBank) {
+      return res.status(404).json({ message: "Bank not found" });
+    }
+
+    res.json({
+      message: "Bank RM information updated successfully",
+      bankDetail: updatedBank,
+    });
+  } catch (err) {
+    console.error("Error updating RM info:", err);
+    res.status(500).json({
+      message: "Internal server error",
+      error: err.message,
+    });
+  }
+}
 
 const get_rmDetails = async (req, res) => {
   try {
@@ -249,50 +293,6 @@ const getbanklogindetails = async (req, res) => {
 
 
 
-// const sendEmailWithAttachment = async (req, res) => {
-//   try {
-//     // Extract user details and document link from the request body
-//     const { email, subject, text, attachmentUrl, userName, userPhone } = req.body;
-
-//     // Create a transporter (this is using Gmail; adjust for your service)
-//     let transporter = nodemailer.createTransport({
-//       service: 'gmail',
-//       auth: {
-//         user: process.env.EMAIL_USERNAME, // Your email address
-//         pass: process.env.EMAIL_PASSWORD, // Your email password or app password if 2FA is on
-//       },
-//     });
-
-//     // Define the email options
-//     let mailOptions = {
-//       from: `"Your App Name" <${process.env.EMAIL_USERNAME}>`, // Sender address
-//       to: email, // Receiver's email address
-//       subject: subject || 'Document Attached', // Email subject
-//       text: text || `Hello, please find the attached document for review.`, // Email body text
-//       html: `<p>Dear ${userName},</p><p>Please find the attached document. You can contact me at ${userPhone} for any further queries.</p>`, // Email body with HTML
-//       attachments: [
-//         {
-//           filename: 'document.pdf', // Name of the file to be attached
-//           path: attachmentUrl, // URL or path to the file to attach
-//         },
-//       ],
-//     };
-
-//     // Send email
-//     transporter.sendMail(mailOptions, (error, info) => {
-//       if (error) {
-//         console.log('Error sending email:', error);
-//         return res.status(500).json({ message: 'Error sending email', error });
-//       }
-//       console.log('Email sent successfully:', info.response);
-//       return res.status(200).json({ message: 'Email sent successfully', info });
-//     });
-//   } catch (error) {
-//     console.error('Error in sendEmailWithAttachment function:', error);
-//     return res.status(500).json({ message: 'Internal Server Error', error });
-//   }
-// };
-
 const downloadFile = (url, downloadPath) => {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(downloadPath);
@@ -338,6 +338,111 @@ const sendEmailWithAttachment = (email, subject, text, attachments, cc) => {
     });
   });
 };
+
+const sendDocumentEmail = async (req, res) => {
+  const { email, subject, text, documentUrls, documentNames, cc, _id } = req.body;
+  if (!email || !subject || !text || !documentUrls || !documentUrls.length || !documentNames || !documentNames.length || !_id) {
+    return res.status(400).json({ error: 'All fields are required: email, subject, text, documentUrls, documentNames, _id' });
+  }
+  const tempFilePaths = [];
+  try {
+    for (let i = 0; i < documentUrls.length; i++) {
+      const documentUrl = documentUrls[i];
+      const documentName = documentNames[i];
+      const tempFilePath = path.join(__dirname, '../temp', documentName); 
+      await downloadFile(documentUrl, tempFilePath);
+      tempFilePaths.push(tempFilePath);
+    }
+    const emailInfo = await sendEmailWithAttachment(email, subject, text, tempFilePaths, cc);
+    await banklogin_details.updateOne(
+      { _id }, 
+      { $set: { document_status: 'document shared' } }
+    );
+    tempFilePaths.forEach(filePath => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+    res.json({
+      message: 'Email sent successfully and document status updated!',
+      info: emailInfo,
+    });
+  } catch (error) {
+    tempFilePaths.forEach(filePath => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+    res.status(500).json({
+      error: 'Error sending email, updating status, or downloading file',
+      details: error.message,
+    });
+  }
+};
+
+
+
+module.exports = {
+    get_rmDetails,
+    getDocumentList,
+    getBankNames,
+    getlist,
+    createBankDetail,
+    getbanklogindetails,
+    sendDocumentEmail,
+    deleteBankDetail,
+    createbankmaster,
+    updatebankmaster
+    };
+
+
+
+    
+// const sendEmailWithAttachment = async (req, res) => {
+//   try {
+//     // Extract user details and document link from the request body
+//     const { email, subject, text, attachmentUrl, userName, userPhone } = req.body;
+
+//     // Create a transporter (this is using Gmail; adjust for your service)
+//     let transporter = nodemailer.createTransport({
+//       service: 'gmail',
+//       auth: {
+//         user: process.env.EMAIL_USERNAME, // Your email address
+//         pass: process.env.EMAIL_PASSWORD, // Your email password or app password if 2FA is on
+//       },
+//     });
+
+//     // Define the email options
+//     let mailOptions = {
+//       from: `"Your App Name" <${process.env.EMAIL_USERNAME}>`, // Sender address
+//       to: email, // Receiver's email address
+//       subject: subject || 'Document Attached', // Email subject
+//       text: text || `Hello, please find the attached document for review.`, // Email body text
+//       html: `<p>Dear ${userName},</p><p>Please find the attached document. You can contact me at ${userPhone} for any further queries.</p>`, // Email body with HTML
+//       attachments: [
+//         {
+//           filename: 'document.pdf', // Name of the file to be attached
+//           path: attachmentUrl, // URL or path to the file to attach
+//         },
+//       ],
+//     };
+
+//     // Send email
+//     transporter.sendMail(mailOptions, (error, info) => {
+//       if (error) {
+//         console.log('Error sending email:', error);
+//         return res.status(500).json({ message: 'Error sending email', error });
+//       }
+//       console.log('Email sent successfully:', info.response);
+//       return res.status(200).json({ message: 'Email sent successfully', info });
+//     });
+//   } catch (error) {
+//     console.error('Error in sendEmailWithAttachment function:', error);
+//     return res.status(500).json({ message: 'Internal Server Error', error });
+//   }
+// };
+
+
 // const sendEmailWithAttachment = (email, subject, text, attachments, cc) => {
 //   return new Promise((resolve, reject) => {
 //     let transporter = nodemailer.createTransport({
@@ -423,58 +528,3 @@ const sendEmailWithAttachment = (email, subject, text, attachments, cc) => {
 //   }
 // };
 
-
-const sendDocumentEmail = async (req, res) => {
-  const { email, subject, text, documentUrls, documentNames, cc, _id } = req.body;
-  if (!email || !subject || !text || !documentUrls || !documentUrls.length || !documentNames || !documentNames.length || !_id) {
-    return res.status(400).json({ error: 'All fields are required: email, subject, text, documentUrls, documentNames, _id' });
-  }
-  const tempFilePaths = [];
-  try {
-    for (let i = 0; i < documentUrls.length; i++) {
-      const documentUrl = documentUrls[i];
-      const documentName = documentNames[i];
-      const tempFilePath = path.join(__dirname, '../temp', documentName); 
-      await downloadFile(documentUrl, tempFilePath);
-      tempFilePaths.push(tempFilePath);
-    }
-    const emailInfo = await sendEmailWithAttachment(email, subject, text, tempFilePaths, cc);
-    await banklogin_details.updateOne(
-      { _id }, 
-      { $set: { document_status: 'document shared' } }
-    );
-    tempFilePaths.forEach(filePath => {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    });
-    res.json({
-      message: 'Email sent successfully and document status updated!',
-      info: emailInfo,
-    });
-  } catch (error) {
-    tempFilePaths.forEach(filePath => {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    });
-    res.status(500).json({
-      error: 'Error sending email, updating status, or downloading file',
-      details: error.message,
-    });
-  }
-};
-
-
-
-module.exports = {
-    get_rmDetails,
-    getDocumentList,
-    getBankNames,
-    getlist,
-    createBankDetail,
-    getbanklogindetails,
-    sendDocumentEmail,
-    deleteBankDetail,
-    createbankmaster
-    };

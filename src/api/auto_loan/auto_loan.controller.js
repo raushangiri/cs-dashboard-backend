@@ -2,6 +2,9 @@ const auto_loan_file = require("../../model/auto_loan_file.model");
 const uploadDatamodel = require("../../model/uploadData.model");
 const overview_details = require('../../model/overview.model');  // Your model
 const personal_details_model = require('../../model/personaldetails.model');  // Your model
+const coapplicant_two_model = require('../../model/coapplicant_two.model');  // Your model
+const coapplicant_one_model = require('../../model/coapplicantone.model');  // Your model
+
 const reference_details = require('../../model/Reference.model');  // Your model
 const dispositionmodel = require("../../model/desposition.model");
 const user = require("../../model/user.model");
@@ -597,7 +600,8 @@ const createpersonadetails = async (req, res) => {
     gst_and_itr_income,
     inhand_salary,
     other_income,
-    note
+    note,
+    is_coapplicant
   } = req.body;
 
   try {
@@ -638,7 +642,8 @@ const createpersonadetails = async (req, res) => {
           gst_and_itr_income,
           inhand_salary,
           other_income,
-          note
+          note,
+          is_coapplicant
         }
       },
       { new: true, upsert: true } // Options: new=true returns updated doc, upsert=true inserts if not found
@@ -670,7 +675,6 @@ const createpersonadetails = async (req, res) => {
     res.status(500).json({ message: 'Error saving personal details', error: error.message });
   }
 };
-
 
 // const createpersonadetails = async (req, res) => {
 //   const { file_number } = req.params;
@@ -777,6 +781,206 @@ const getpersonadetails = async (req, res) => {
     res.status(200).json({ data: details });
   } catch (error) {
     res.status(500).json({ message: 'Error retrieving personal details', error: error.message });
+  }
+};
+
+const createcoapplicantonepersonadetails = async (req, res) => {
+  
+  const { file_number } = req.params;
+  const {
+coapplicant_one_type_of_loan,
+coapplicant_one_loan_category,
+coapplicant_one_required_amount,
+coapplicant_one_mobile_number,
+coapplicant_one_name,
+coapplicant_one_occupation_type,
+coapplicant_one_nature_of_business,
+coapplicant_one_service_type,
+coapplicant_one_type_of_resident,
+coapplicant_one_permanent_address,
+coapplicant_one_permanent_address_landmark,
+coapplicant_one_official_email_id,
+coapplicant_one_personal_email_id,
+coapplicant_one_office_name,
+coapplicant_one_date_of_birth,
+coapplicant_one_alternate_number,
+coapplicant_one_mother_name,
+coapplicant_one_father_name,
+coapplicant_one_marital_status,
+coapplicant_one_spouse_name,
+coapplicant_one_current_address,
+coapplicant_one_years_at_current_residence,
+coapplicant_one_total_time_in_delhi,
+coapplicant_one_office_address,
+coapplicant_one_office_address_landmark,
+coapplicant_one_years_at_current_organization,
+coapplicant_one_gst_itr_filed,
+coapplicant_one_gst_and_itr_income,
+coapplicant_one_inhand_salary,
+coapplicant_one_other_income,
+coapplicant_one_note
+  } = req.body;
+  try {
+    const coapplicant_one_Details = await coapplicant_one_model.findOneAndUpdate(
+      { file_number }, // Search criteria
+      {
+        $set: {
+           coapplicant_one_type_of_loan,
+coapplicant_one_loan_category,
+coapplicant_one_required_amount,
+coapplicant_one_mobile_number,
+coapplicant_one_name,
+coapplicant_one_occupation_type,
+coapplicant_one_nature_of_business,
+coapplicant_one_service_type,
+coapplicant_one_type_of_resident,
+coapplicant_one_permanent_address,
+coapplicant_one_permanent_address_landmark,
+coapplicant_one_official_email_id,
+coapplicant_one_personal_email_id,
+coapplicant_one_office_name,
+coapplicant_one_date_of_birth,
+coapplicant_one_alternate_number,
+coapplicant_one_mother_name,
+coapplicant_one_father_name,
+coapplicant_one_marital_status,
+coapplicant_one_spouse_name,
+coapplicant_one_current_address,
+coapplicant_one_years_at_current_residence,
+coapplicant_one_total_time_in_delhi,
+coapplicant_one_office_address,
+coapplicant_one_office_address_landmark,
+coapplicant_one_years_at_current_organization,
+coapplicant_one_gst_itr_filed,
+coapplicant_one_gst_and_itr_income,
+coapplicant_one_inhand_salary,
+coapplicant_one_other_income,
+coapplicant_one_note
+        }
+      },
+      { new: true, upsert: true } // Options: new=true returns updated doc, upsert=true inserts if not found
+    );
+    if (coapplicant_one_Details) {
+      res.status(200).json({ message: 'Co-applicant details updated successfully' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving co-applicant details', error: error.message });
+  }
+};
+
+const getcoapplicantonedetails = async (req, res) => {
+  const { file_number } = req.params;
+
+  try {
+    const details = await coapplicant_one_model.findOne({ file_number });
+
+    if (!details) {
+      return res.status(404).json({ message: 'Co-applicant one details not found' });
+    }
+
+    res.status(200).json({ data: details });
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving co-applicant one details', error: error.message });
+  }
+};
+
+const createcoapplicanttwopersonadetails = async (req, res) => {
+  const { file_number } = req.params;
+  const {
+   
+    coapplicant_two_type_of_loan,
+coapplicant_two_loan_category,
+coapplicant_two_required_amount,
+coapplicant_two_mobile_number,
+coapplicant_two_name,
+coapplicant_two_occupation_type,
+coapplicant_two_nature_of_business,
+coapplicant_two_service_type,
+coapplicant_two_type_of_resident,
+coapplicant_two_permanent_address,
+coapplicant_two_permanent_address_landmark,
+coapplicant_two_official_email_id,
+coapplicant_two_personal_email_id,
+coapplicant_two_office_name,
+coapplicant_two_date_of_birth,
+coapplicant_two_alternate_number,
+coapplicant_two_mother_name,
+coapplicant_two_father_name,
+coapplicant_two_marital_status,
+coapplicant_two_spouse_name,
+coapplicant_two_current_address,
+coapplicant_two_years_at_current_residence,
+coapplicant_two_total_time_in_delhi,
+coapplicant_two_office_address,
+coapplicant_two_office_address_landmark,
+coapplicant_two_years_at_current_organization,
+coapplicant_two_gst_itr_filed,
+coapplicant_two_gst_and_itr_income,
+coapplicant_two_inhand_salary,
+coapplicant_two_other_income,
+coapplicant_two_note
+  }= req.body;
+  try {
+    const coapplicant_two_Details = await coapplicant_two_model.findOneAndUpdate(
+      { file_number }, // Search criteria
+      {
+        $set: {
+          coapplicant_two_type_of_loan,
+coapplicant_two_loan_category,
+coapplicant_two_required_amount,
+coapplicant_two_mobile_number,
+coapplicant_two_name,
+coapplicant_two_occupation_type,
+coapplicant_two_nature_of_business,
+coapplicant_two_service_type,
+coapplicant_two_type_of_resident,
+coapplicant_two_permanent_address,
+coapplicant_two_permanent_address_landmark,
+coapplicant_two_official_email_id,
+coapplicant_two_personal_email_id,
+coapplicant_two_office_name,
+coapplicant_two_date_of_birth,
+coapplicant_two_alternate_number,
+coapplicant_two_mother_name,
+coapplicant_two_father_name,
+coapplicant_two_marital_status,
+coapplicant_two_spouse_name,
+coapplicant_two_current_address,
+coapplicant_two_years_at_current_residence,
+coapplicant_two_total_time_in_delhi,
+coapplicant_two_office_address,
+coapplicant_two_office_address_landmark,
+coapplicant_two_years_at_current_organization,
+coapplicant_two_gst_itr_filed,
+coapplicant_two_gst_and_itr_income,
+coapplicant_two_inhand_salary,
+coapplicant_two_other_income,
+coapplicant_two_note
+        }
+      },
+      { new: true, upsert: true } // Options: new=true returns updated doc, upsert=true inserts if not found
+    );
+    if (coapplicant_two_Details) {
+      res.status(200).json({ message: 'Co-applicant details updated successfully' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving co-applicant details', error: error.message });
+  }
+};
+
+const getcoapplicanttwopersonadetails = async (req, res) => {
+  const { file_number } = req.params;
+
+  try {
+    const details = await coapplicant_two_model.findOne({ file_number });
+
+    if (!details) {
+      return res.status(404).json({ message: 'Co-applicant two details not found' });
+    }
+
+    res.status(200).json({ data: details });
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving co-applicant two details', error: error.message });
   }
 };
 
@@ -4210,5 +4414,9 @@ module.exports = {
   updatereferencedetail,
   getbanklogindetailsbyid,
   deleteLoanDetails,
-  deletereferencedetail
+  deletereferencedetail,
+  createcoapplicantonepersonadetails,
+  createcoapplicanttwopersonadetails,
+  getcoapplicantonedetails,
+  getcoapplicanttwopersonadetails
 };

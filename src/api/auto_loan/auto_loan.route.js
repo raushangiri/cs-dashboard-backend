@@ -48,7 +48,11 @@ const {
   updatereferencedetail,
   getbanklogindetailsbyid,
   deleteLoanDetails,
-  deletereferencedetail
+  deletereferencedetail,
+  createcoapplicantonepersonadetails,
+  createcoapplicanttwopersonadetails,
+getcoapplicantonedetails,
+getcoapplicanttwopersonadetails
 } = require("./auto_loan.controller");
 
 
@@ -59,7 +63,12 @@ router.delete('/deleteDocument/:id', deletedocumentdata);
 router.get("/getfiledata/:mobile_number", getfiledata);
 router.post("/createLoanFileOverview", createLoanFileOverview);
 router.post("/createpersonaldetails/:file_number", createpersonadetails);
+router.post("/createcoapplicantonepersonadetails/:file_number", createcoapplicantonepersonadetails);
+router.post('/createcoapplicanttwopersonadetails/:file_number', createcoapplicanttwopersonadetails);
+
 router.get("/getpersonadetails/:file_number", getpersonadetails);
+router.get("/getcoapplicantonedetails/:file_number", getcoapplicantonedetails);
+router.get("/getcoapplicanttwopersonadetails/:file_number", getcoapplicanttwopersonadetails);
 router.post("/createreferencedetail/:file_number", createreferencedetail);
 router.get("/getreferencedetail/:file_number", getreferencedetail);
 router.post("/createdesposition", createdesposition);
@@ -90,8 +99,8 @@ router.get("/getteamleaderperformance/:userId", getteamleaderperformance);
 router.put('/updateBankStatement/:_id', updateBankStatement);
 router.put('/updateLoandetails/:loanId', updateLoandetails);
 router.post('/updatereferencedetail/:id', updatereferencedetail);
-router.get("/getbanklogindetailsbyid/:_id", getbanklogindetailsbyid);
 
+router.get("/getbanklogindetailsbyid/:_id", getbanklogindetailsbyid);
 router.delete("/deleteLoanDetails/:_id", deleteLoanDetails);
 router.delete("/deletereferencedetail/:_id", deletereferencedetail);
 

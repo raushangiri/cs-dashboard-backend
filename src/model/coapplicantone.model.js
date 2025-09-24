@@ -1,156 +1,146 @@
 const mongoose = require("mongoose");
-const personaldata_schema = new mongoose.Schema(
+const coapplicantdata_schema = new mongoose.Schema(
   {
     file_number: {
         type: String,
       },
-    is_interested: {
+    coapplicant_one_type_of_loan: {
         type: String,
         default:""
     },
-    type_of_loan: {
+    coapplicant_one_loan_category: {
         type: String,
         default:""
     },
-    loan_category: {
+    coapplicant_one_required_amount: {
         type: String,
         default:""
     },
-    required_amount: {
+    coapplicant_one_mobile_number: {
         type: String,
         default:""
     },
-    mobile_number: {
+    coapplicant_one_customerName: {
         type: String,
         default:""
     },
-    customerName: {
+    coapplicant_one_name: {
         type: String,
         default:""
     },
-    name: {
+    coapplicant_one_occupation_type: {
         type: String,
         default:""
     },
-    occupation_type: {
+    coapplicant_one_nature_of_business: {
         type: String,
         default:""
     },
-    nature_of_business: {
+    coapplicant_one_service_type: {
         type: String,
         default:""
     },
-    service_type: {
+    coapplicant_one_type_of_resident: {
         type: String,
         default:""
     },
-    type_of_resident: {
+    coapplicant_one_permanent_address: {
         type: String,
         default:""
     },
-    permanent_address: {
+    coapplicant_one_permanent_address_landmark: {
         type: String,
         default:""
     },
-    permanent_address_landmark: {
+    coapplicant_one_official_email_id: {
         type: String,
         default:""
     },
-    official_email_id: {
+    coapplicant_one_personal_email_id: {
         type: String,
         default:""
     },
-    personal_email_id: {
+    coapplicant_one_office_name: {
         type: String,
         default:""
     },
-    office_name: {
+    coapplicant_one_date_of_birth: {
         type: String,
         default:""
     },
-    date_of_birth: {
+    coapplicant_one_office_name: {
         type: String,
         default:""
     },
-    office_name: {
+    coapplicant_one_date_of_birth: {
         type: String,
         default:""
     },
-    date_of_birth: {
+    coapplicant_one_alternate_number: {
         type: String,
         default:""
     },
-    alternate_number: {
+    coapplicant_one_mother_name: {
         type: String,
         default:""
     },
-    mother_name: {
+    coapplicant_one_father_name: {
         type: String,
         default:""
     },
-    father_name: {
+    coapplicant_one_marital_status: {
         type: String,
         default:""
     },
-    marital_status: {
+    coapplicant_one_spouse_name: {
         type: String,
         default:""
     },
-    spouse_name: {
+    coapplicant_one_current_address: {
         type: String,
         default:""
     },
-    current_address: {
+    coapplicant_one_years_at_current_residence: {
         type: String,
         default:""
     },
-    years_at_current_residence: {
+    coapplicant_one_total_time_in_delhi: {
         type: String,
         default:""
     },
-    total_time_in_delhi: {
+    coapplicant_one_office_address: {
         type: String,
         default:""
     },
-    office_address: {
+    coapplicant_one_office_address_landmark: {
         type: String,
         default:""
     },
-    office_address_landmark: {
+    coapplicant_one_years_at_current_organization: {
         type: String,
         default:""
     },
-    years_at_current_organization: {
+    coapplicant_one_gst_itr_filed: {
         type: String,
         default:""
     },
-    gst_itr_filed: {
+    coapplicant_one_gst_and_itr_income: {
         type: String,
         default:""
     },
-    gst_and_itr_income: {
+    coapplicant_one_inhand_salary: {
         type: String,
         default:""
     },
-    inhand_salary: {
+    coapplicant_one_other_income: {
         type: String,
         default:""
     },
-    other_income: {
-        type: String,
-        default:""
-    },
-    note:{
+    coapplicant_one_note:{
         type:String,
         default:""
-    },
-    is_coapplicant:{
+    }
   },
-  is_coapplicant: {
-    type: String,
-    default: "No"
-  }
-},
   {
     timestamps: {
       createdAt: true,
@@ -160,5 +150,5 @@ const personaldata_schema = new mongoose.Schema(
 
 
 );
-  const personal_details = mongoose.model("loan_file_personaldetails", personaldata_schema);
-  module.exports = personal_details;
+  const coapplicantone_details = mongoose.model("coapplicantonedetails", coapplicantdata_schema);
+  module.exports = coapplicantone_details;

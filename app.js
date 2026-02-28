@@ -216,6 +216,10 @@ function startexpress() {
   app.get("/healthcheck", (req, res) => {
     res.status(200).send({ message: "ok", status: 200 });
   });
+  app.get("/checkdb", (req, res) => {
+    res.status(200).send({ message: process.env.MONGO_URI
+, status: 200 });
+  });
 
   app.listen(port, console.log("server is running at ", port));
 }

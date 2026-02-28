@@ -1186,12 +1186,14 @@ const createdesposition = async (req, res) => {
             updateData.file_status = file_status;
             updateData.sales_agent_name = userdetails.name;
             updateData.sales_assign_date = new Date();
+            updateData.sales_action_date = new Date();
             updateNeeded = true;
           }
           // Check if sales_assign_date is more than 15 days ago
           else if (loanFile.sales_assign_date && loanFile.sales_assign_date < fifteenDaysAgo) {
             updateData.sales_agent_name = userdetails.name;
             updateData.sales_assign_date = new Date();
+            updateData.sales_action_date = new Date();
             updateData.sales_agent_id = userId;
             updateNeeded = true;
           }
@@ -1204,16 +1206,23 @@ const createdesposition = async (req, res) => {
           updateData.tvr_status = 'Pending';
           updateNeeded = true;
           updateData.tvr_assign_date = new Date();
+                      updateData.sales_action_date = new Date();
+
+          
         }
         if (file_status === 'process_to_tvr') {
           updateData.tvr_status = 'Pending';
           updateNeeded = true;
           updateData.tvr_assign_date = new Date();
+                      updateData.sales_action_date = new Date();
+
         }
         if (file_status === 'process_to_cdr') {
           updateData.cdr_status = 'Pending';
           updateNeeded = true;
           updateData.cdr_assign_date = new Date();
+                      updateData.sales_action_date = new Date();
+
         }
         break;
       case 'TVR':
@@ -2023,6 +2032,7 @@ const getLoanFilesByUserId = async (req, res) => {
         query = { tvr_agent_id: sanitizedUserId };
         break;
       case 'admin':
+        console.log("admin role detected");
         query = { sales_status: "Interested" };
         break;
       case 'Team leader':
@@ -2064,7 +2074,7 @@ const getLoanFilesByUserId = async (req, res) => {
           query.banklogin_action_date = { $gte: start, $lte: end };
           break;
         case 'admin':
-          query.sales_action_date = { $gte: start, $lte: end };
+          query.sales_assign_date = { $gte: start, $lte: end };
           break;
       }
     }

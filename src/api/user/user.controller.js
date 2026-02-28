@@ -28,6 +28,7 @@ require("dotenv").config();
 const fs = require("fs");
 const email_link = process.env.verified_uri;
 var privateKEY = `${process.env.private_key}`;
+const userDailyAux = require("../../model/auxschema.model");
 
 // const config = require("../../src/config/config")
 
@@ -542,6 +543,91 @@ const getUserbyteamleader = async (req, res) => {
   }
 };
 
+const createuseraux = async (req, res) => {
+  try {
+    const { userId, aux } = req.body;
+    if (!userId || !aux) {
+      return res.status(400).json({ error: "userId and aux are required" });
+    }
+
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    let dailyRecord = await userDailyAux.findOne({ userId, date: today });
+
+    if (!dailyRecord) {
+      // Create new daily record
+      dailyRecord = new userDailyAux({
+        userId,
+        date: today,
+        auxChanges: [
+          { aux, startTime: new Date(), endTime: null }
+        ],
+      });
+    } else {
+      const auxChanges = dailyRecord.auxChanges;
+      // Update previous AUX endTime if exists and last AUX is not Offline
+      if (auxChanges.length > 0) {
+        const lastAux = auxChanges[auxChanges.length - 1];
+        if (lastAux.aux !== "Offline" && !lastAux.endTime) {
+          lastAux.endTime = new Date();
+        }
+      }
+      // Only add new AUX if it's not Offline
+      if (aux !== "Offline") {
+        auxChanges.push({ aux, startTime: new Date(), endTime: null });
+      }
+    }
+
+    await dailyRecord.save();
+
+    res.json({ message: "AUX applied successfully", dailyRecord });
+  } catch (error) {
+    console.error("Error applying AUX:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+const getUserDailyAux = async (req, res) => {
+  try {
+    const { userId, date } = req.params; // date format: YYYY-MM-DD
+
+    const dailyRecord = await userDailyAux.findOne({ userId, date });
+
+    if (!dailyRecord) {
+      return res.status(404).json({ error: "No AUX record found for this date" });
+    }
+
+    res.json(dailyRecord);
+  } catch (error) {
+    console.error("Error fetching daily AUX:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+const loggeduserlist= async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+
+    const users = await userDailyAux.find({
+      date: today,
+      "auxChanges.aux": "Available",
+    }).select("userId date auxChanges");
+
+    res.json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (err) {
+    console.error("Error fetching available users:", err);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+
 
 
 
@@ -555,5 +641,8 @@ module.exports = {
   findteamleader,
   updateUser,
   getUserById,
-  getUserbyteamleader
+  getUserbyteamleader,
+  createuseraux,
+  getUserDailyAux,
+  loggeduserlist
 };

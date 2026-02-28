@@ -11,7 +11,10 @@ const {
   findteamleader,
   updateUser,
   getUserById,
-  getUserbyteamleader
+  getUserbyteamleader,
+   createuseraux,
+    getUserDailyAux,
+    loggeduserlist
 } = require("../user/user.controller");
 const auth = require("../../middlewares/auth");
 
@@ -25,12 +28,9 @@ router.get("/findteamleader",findteamleader);
 router.put("/updateUser",updateUser);
 router.get("/getUserById/:userId",getUserById);
 router.get("/getUserbyteamleader/:userId",getUserbyteamleader);
-
-
-
-
-
-
+router.post("/createuseraux", createuseraux);
+router.get("/getUserDailyAux/:userId/:date", getUserDailyAux);
+router.get("/loggeduserlist", loggeduserlist);
 
 
 

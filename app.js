@@ -217,7 +217,7 @@ function startexpress() {
     res.status(200).send({ message: "ok", status: 200 });
   });
   app.get("/checkdb", (req, res) => {
-    res.status(200).send({ message: process.env.MONGO_URI
+    res.status(200).send({ message: console.log("DB:", process.env.MONGO_URI)
 , status: 200 });
   });
 

@@ -3171,44 +3171,36 @@ const getProcessToTVRFiles = async (req, res) => {
 // };
 const getProcessToCDRFiles = async (req, res) => {
   try {
-    // Fetch all records where file_status is "process_to_cdr" and cdr_agent_id is an empty string
+
+    // Calculate date 7 days ago
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0); // optional: start of day
+
+    // Fetch records from last 7 days only
     const files = await loanfilemodel.find({
       file_status: 'process_to_cdr',
-      cdr_agent_id: '' // Correct empty string
+      cdr_agent_id: '',
+      cdr_assign_date: { $gte: sevenDaysAgo }
     })
-    .sort({ cdr_assign_date: -1 }) // Sort ascending. Use -1 for descending
+    .sort({ cdr_assign_date: -1 }) // Latest first
     .lean();
 
     if (files.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No files found with status 'process_to_cdr' and empty 'cdr_agent_id'."
+        message: "No files found in last 7 days with status 'process_to_cdr' and empty 'cdr_agent_id'."
       });
     }
 
-    // Extract sales_agent_ids from the files
-    const salesAgentIds = files.map(file => file.cdr_agent_id);
-
-    // Fetch corresponding sales agents' details from the user collection
-    const salesAgents = await user.find({
-      userId: { $in: salesAgentIds }
-    }).select('userId name').lean();
-
-    // Create a map of userId -> name for easy lookup
-    const salesAgentMap = salesAgents.reduce((acc, agent) => {
-      acc[agent.userId] = agent.name;
-      return acc;
-    }, {});
-
-    // Extract file_numbers from the files
+    // Extract file_numbers
     const fileNumbers = files.map(file => file.file_number);
 
-    // Fetch loan types and loan categories from the personal_details_model based on file_number
+    // Fetch loan details
     const personalDetails = await personal_details_model.find({
       file_number: { $in: fileNumbers }
     }).select('file_number type_of_loan loan_category').lean();
 
-    // Create a map of file_number -> {loan_type, loan_category} for easy lookup
     const loanDetailsMap = personalDetails.reduce((acc, detail) => {
       acc[detail.file_number] = {
         type_of_loan: detail.type_of_loan,
@@ -3217,13 +3209,14 @@ const getProcessToCDRFiles = async (req, res) => {
       return acc;
     }, {});
 
-    // Append the sales agent's name, loan type, and loan category to each file record
     const filesWithLoanDetails = files.map(file => {
-      const { type_of_loan = 'Unknown Loan Type', loan_category = 'Unknown Loan Category' } = loanDetailsMap[file.file_number] || {};
+      const {
+        type_of_loan = 'Unknown Loan Type',
+        loan_category = 'Unknown Loan Category'
+      } = loanDetailsMap[file.file_number] || {};
 
       return {
         ...file,
-        // sales_agent_name: salesAgentMap[file.sales_agent_id] || 'Unknown Agent',
         type_of_loan,
         loan_category
       };
@@ -3231,9 +3224,10 @@ const getProcessToCDRFiles = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Records fetched successfully',
+      message: 'Last 7 days records fetched successfully',
       data: filesWithLoanDetails
     });
+
   } catch (error) {
     console.error('Error fetching process_to_cdr files:', error);
     return res.status(500).json({

@@ -7,16 +7,13 @@ const cluster = require("cluster");
 const os = require("os");
 const cors = require("cors");
 const helmet = require("helmet");
-const mongoose = require("mongoose");
 
 const { connectDB } = require("./src/db/connection");
 const router = require("./src/api/route/routes");
 
 const Message = require("./src/model/message.model");
-const Conversation = require("./src/model/conversation.model");
-const User = require("./src/model/user.model");
 
-const PORT = 3008;
+const PORT = process.env.PORT || 3008;
 const cpuCount = os.cpus().length;
 
 if (cluster.isPrimary) {
@@ -34,24 +31,16 @@ if (cluster.isPrimary) {
 
 } else {
 
-  // ===========================
-  // WORKER CODE
-  // ===========================
-
   const app = express();
-
   app.use(express.json());
+
   app.use(cors({
     origin: "http://localhost:3000",
     credentials: true
   }));
+
   app.use(helmet());
-
-  app.use("/", router);
-
-  // ===========================
-  // HTTP + SOCKET SERVER
-  // ===========================
+  app.use("/api/v1", router);
 
   const server = http.createServer(app);
 
@@ -62,45 +51,51 @@ if (cluster.isPrimary) {
     }
   });
 
-  // ===========================
-  // SOCKET LOGIC
-  // ===========================
+  io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
 
-io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+    socket.on("joinConversation", (conversationId) => {
+      socket.join(conversationId);
+    });
 
-  socket.on("joinConversation", (conversationId) => {
-    socket.join(conversationId);
+    socket.on("sendMessage", async (data) => {
+      try {
+        const { conversationId, senderId, text } = data;
+
+        const message = await Message.create({
+          conversationId,
+          sender: senderId,
+          text
+        });
+
+        const populatedMessage = await message.populate("sender", "name");
+
+        io.to(conversationId).emit("receiveMessage", populatedMessage);
+
+      } catch (err) {
+        console.error("Message error:", err);
+      }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("User disconnected:", socket.id);
+    });
   });
 
- socket.on("sendMessage", async (data) => {
-  console.log("Incoming socket data:", data); // 👈 ADD THIS
-
-  const { conversationId, senderId, text } = data;
-
-  console.log("Text value:", text); // 👈 ADD THIS
-
-  const message = await Message.create({
-    conversationId,
-    sender: senderId,
-    text: text 
+app.get("/welcome", (req, res) => {
+    res.status(200).send({ message: "the server is running" });
   });
 
-  console.log("Saved message:", message); // 👈 ADD THIS
-});
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+  app.get("/healthcheck", (req, res) => {
+    res.status(200).send({ message: "ok", status: 200 });
   });
-});
 
-  // ===========================
-  // DB CONNECT + START SERVER
-  // ===========================
+  app.listen(PORT, console.log("server is running at ", PORT));
 
+  
   connectDB()
     .then(() => {
-      server.listen(PORT, () => {
+      server.listen(PORT, "0.0.0.0", () => {
         console.log(`Worker ${process.pid} running on port ${PORT}`);
       });
     })
@@ -108,31 +103,3 @@ io.on("connection", (socket) => {
       console.error("DB connection failed:", err);
     });
 }
-
-// const createDefaultGroup = async () => {
-//   const existing = await Conversation.findOne({ type: "group" });
-
-//   if (!existing) {
-//     const users = await User.find({ status: "active" });
-
-//     await Conversation.create({
-//       type: "group",
-//       name: "Team Group",
-//       participants: users.map((u) => u._id),
-//     });
-
-//     console.log("✅ Default group created");
-//   } else {
-//     console.log("✅ Group already exists");
-//   }
-// };
-
-// createDefaultGroup();
-
-// connectDB().then(async () => {
-//   await createDefaultGroup();
-
-//   server.listen(3008, () => {
-//     console.log("Server running on 3008");
-//   });
-// });

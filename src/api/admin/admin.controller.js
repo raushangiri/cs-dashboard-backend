@@ -3,7 +3,55 @@ const personal_details_model = require('../../model/personaldetails.model');  //
 const loanfilemodel = require('../../model/loan_file.model'); // Assuming your model is in the same folder
 const user = require('../../model/user.model'); // Assuming your model is in the same folder
 const overview_details = require("../../model/overview.model");
+const Conversation = require("../../model/conversation.model");
+const Message = require("../../model/message.model");
 
+// Create or Get Conversation
+const createConversation = async (req, res) => {
+  try {
+    const { senderId, receiverId } = req.body;
+
+    let existingConversation = await Conversation.findOne({
+      type: "individual",
+      participants: { $all: [senderId, receiverId] },
+    });
+
+    if (!existingConversation) {
+      existingConversation = await Conversation.create({
+        type: "individual",
+        participants: [senderId, receiverId],
+      });
+    }
+
+    return res.status(200).json(existingConversation);
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error creating conversation",
+      error: error.message,
+    });
+  }
+};
+
+
+// Get Messages
+const getMessages = async (req, res) => {
+  try {
+    const messages = await Message.find({
+      conversationId: req.params.conversationId,
+    })
+      .populate("sender", "name")
+      .sort({ createdAt: 1 });
+
+    return res.status(200).json(messages);
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error fetching messages",
+      error: error.message,
+    });
+  }
+};
 
 const getLoanFilesByDate = async (req, res) => {
   try {
@@ -762,22 +810,50 @@ const createChat =  async (req, res) => {
 };
 
 const createGroupChat = async (req, res) => {
-  const { users, name } = req.body; // Array of user IDs and group name
-  users.push(req.user._id);
+  try {
+    const { users, name } = req.body;
 
-  const groupChat = await Chat.create({
-    chatName: name,
-    users: users,
-    isGroupChat: true,
-    groupAdmin: req.user._id,
-  });
+    if (!users || users.length < 2) {
+      return res.status(400).json({
+        message: "At least 2 users required for group",
+      });
+    }
 
-  const fullGroupChat = await Chat.findOne({ _id: groupChat._id })
-    .populate("users", "-password")
-    .populate("groupAdmin", "-password");
+    const groupConversation = await Conversation.create({
+      type: "group",
+      name: name || "Team Group",
+      participants: users,
+    });
 
-  res.status(200).json(fullGroupChat);
+    const populatedGroup = await Conversation.findById(groupConversation._id)
+      .populate("participants", "name");
+
+    res.status(200).json(populatedGroup);
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error creating group",
+      error: error.message,
+    });
+  }
 };
+
+const getActiveUsers = async (req, res) => {
+  try {
+    const users = await user.find({
+      status: "active",
+      role: { $ne: "resigned" },
+    }).select("_id name role");
+
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
 
 module.exports = {
   getLoanFilesByDate,
@@ -788,6 +864,9 @@ module.exports = {
   getcdrperformanceByFilters,
   getbankloginperformanceByFilters,
   getusers,
-createChat,
-createGroupChat
+createConversation,
+getMessages,
+
+createGroupChat,
+getActiveUsers
 }

@@ -12,10 +12,14 @@ const {
     getbankloginperformanceByFilters,
     getusers,
     createChat,
-    createGroupChat
+    createGroupChat,
 //     readMessages,
 // createMessage
+getActiveUsers,
+createConversation,
+getMessages
 } = require("./admin.controller");
+const Conversation = require("../../model/conversation.model");
 
 
 router.get("/gettvrFilesByDate",gettvrFilesByDate );
@@ -27,8 +31,17 @@ router.get("/getcdrperformanceByFilters",getcdrperformanceByFilters );
 router.get("/getbankloginperformanceByFilters",getbankloginperformanceByFilters );
 // router.post('/users', createMessage);
 // router.get('/getusers', readMessages);
-router.get("/getusers", getusers);
-router.post("/createChat", createChat);
-router.post("/createGroupChat", createGroupChat);
+router.get("/getActiveUsers", getActiveUsers);
+router.post("/conversations", createConversation);
+// router.post("/conversations/group", createGroupChat);
+
+// router.get("/messages/:conversationId", getMessages);
+
+router.get("/conversations/:conversationId/messages", getMessages);
+
+router.get("/conversations/group", async (req, res) => {
+  const group = await Conversation.findOne({ type: "group" });
+  res.json(group);
+});
 
 module.exports = router;

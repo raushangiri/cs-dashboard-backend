@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
- "scripts": {
-  "start": "node app.js",
-  "dev": "nodemon app.js",
-  "prod": "pm2 start app.js"
-},
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "prod": "pm2 start app.js"
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -42,6 +42,7 @@
     "ping": "^0.4.4",
     "smb2": "^0.2.11",
     "socket.io": "^4.7.2",
+    "socket.io-client": "^4.8.3",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

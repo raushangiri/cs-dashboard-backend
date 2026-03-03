@@ -20,7 +20,21 @@ const loanfilemodel = require('./src/model/loan_file.model');
 const port = process.env.port;
 
 
+const http = require("http"); // Built-in Node module
+const { Server } = require("socket.io");
+const app = express();
 
+// 1. Create the HTTP server using your Express app
+const server = http.createServer(app);
+
+// 2. Initialize Socket.io with that server
+const io = new Server(server, {
+  pingTimeout: 60000, // Closes connection after 60s of inactivity to save bandwidth
+  cors: {
+    origin: "http://localhost:3000", // Ensure this matches your React URL
+    methods: ["GET", "POST"],
+  },
+});
 
 
 
@@ -224,6 +238,37 @@ function startexpress() {
   app.listen(port, console.log("server is running at ", port));
 }
 
+io.on("connection", (socket) => {
+  console.log("Connected to socket.io");
+
+  socket.on("setup", (userData) => {
+    socket.join(userData._id);
+    socket.emit("connected");
+  });
+
+  socket.on("join chat", (room) => {
+    socket.join(room);
+    console.log("User Joined Room: " + room);
+  });
+
+  socket.on("new message", (newMessageReceived) => {
+    var chat = newMessageReceived.chat;
+    if (!chat.users) return console.log("chat.users not defined");
+
+    chat.users.forEach((user) => {
+      // Don't send the message back to the sender
+      if (user._id == newMessageReceived.sender._id) return;
+
+      // Emit to the user's private room (setup in the 'setup' event)
+      socket.in(user._id).emit("message received", newMessageReceived);
+    });
+  });
+
+  socket.off("setup", () => {
+    console.log("USER DISCONNECTED");
+    socket.leave(userData._id);
+  });
+});
 
 if (cluster.isPrimary) {
   console.log(`Number of CPUs is ${cpuCount}`);

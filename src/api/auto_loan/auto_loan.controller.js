@@ -2160,52 +2160,134 @@ const getLoanFilesByUserId = async (req, res) => {
 
 const admindashboardcount = async (req, res) => {
   try {
-    // Extract the startDate and endDate from the query parameters
     const { startDate, endDate } = req.query;
 
-    // If startDate or endDate is not provided, default to the first day and the current day of the month
-    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const end = endDate ? new Date(new Date(endDate).setHours(23, 59, 59)) : new Date();
+    // Default: Month To Date
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-    // Count loan files created within the date range
+    const end = endDate
+      ? new Date(new Date(endDate).setHours(23, 59, 59, 999))
+      : new Date();
+
+    // Total uploaded files (based on createdAt)
     const mtdFileCount = await loanfilemodel.countDocuments({
       createdAt: { $gte: start, $lte: end }
     });
 
-    // Aggregate to count total loan files created within the date range by status
+    // CDR + Bank Login Aggregation (Based on Assign Dates)
     const loanFileAggregation = await loanfilemodel.aggregate([
       {
         $match: {
-          createdAt: { $gte: start, $lte: end },
           $or: [
-            { tvr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
-            { cdr_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
-            { banklogin_status: { $in: ['Completed', 'Pending', 'Rejected'] } },
-            { file_status: { $in: ['process_to_tvr', 'process_to_cdr', 'process_to_login_team'] } }
+            { cdr_assign_date: { $gte: start, $lte: end } },
+            { banklogin_assign_date: { $gte: start, $lte: end } }
           ]
         }
       },
       {
         $group: {
           _id: null,
-          tvrCompleted: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Completed'] }, 1, 0] } },
-          tvrPending: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Pending'] }, 1, 0] } },
-          tvrRejected: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Rejected'] }, 1, 0] } },
-          cdrCompleted: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Completed'] }, 1, 0] } },
-          cdrPending: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Pending'] }, 1, 0] } },
-          cdrRejected: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Rejected'] }, 1, 0] } },
-          bankloginCompleted: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Completed'] }, 1, 0] } },
-          bankloginPending: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Pending'] }, 1, 0] } },
-          bankloginRejected: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Rejected'] }, 1, 0] } }
+
+          // CDR Counts
+          cdrCompleted: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$cdr_status', 'Completed'] },
+                    { $gte: ['$cdr_assign_date', start] },
+                    { $lte: ['$cdr_assign_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          cdrPending: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$cdr_status', 'Pending'] },
+                    { $gte: ['$cdr_assign_date', start] },
+                    { $lte: ['$cdr_assign_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          cdrRejected: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$cdr_status', 'Rejected'] },
+                    { $gte: ['$cdr_assign_date', start] },
+                    { $lte: ['$cdr_assign_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          // Bank Login Counts
+          bankloginCompleted: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$banklogin_status', 'Completed'] },
+                    { $gte: ['$banklogin_assign_date', start] },
+                    { $lte: ['$banklogin_assign_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          bankloginPending: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$banklogin_status', 'Pending'] },
+                    { $gte: ['$banklogin_assign_date', start] },
+                    { $lte: ['$banklogin_assign_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          bankloginRejected: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$banklogin_status', 'Rejected'] },
+                    { $gte: ['$banklogin_assign_date', start] },
+                    { $lte: ['$banklogin_assign_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
         }
       }
     ]);
 
-    // Extract the first document from the aggregation result or initialize with default values
     const loanFileCount = loanFileAggregation[0] || {
-      tvrCompleted: 0,
-      tvrPending: 0,
-      tvrRejected: 0,
       cdrCompleted: 0,
       cdrPending: 0,
       cdrRejected: 0,
@@ -2214,63 +2296,46 @@ const admindashboardcount = async (req, res) => {
       bankloginRejected: 0
     };
 
-    // Count loan files marked as Interested within the date range
+    // Interested Count (Sales Assign Date Based)
     const interestedCount = await loanfilemodel.countDocuments({
       sales_status: 'Interested',
       sales_assign_date: { $gte: start, $lte: end }
     });
-    const pendingCounts = await loanfilemodel.aggregate([
-      {
-        $group: {
-          _id: null, // We don't need to group by any specific field
-          pendingtvrCount: {
-            $sum: { $cond: [{ $eq: ["$tvr_status", "Pending"] }, 1, 0] }
-          },
-          pendingcdrCount: {
-            $sum: { $cond: [{ $eq: ["$cdr_status", "Pending"] }, 1, 0] }
-          },
-          pendingbankloginCount: {
-            $sum: { $cond: [{ $eq: ["$banklogin_status", "Pending"] }, 1, 0] }
-          }
-        }
-      }
-    ]);
 
-    // Extract counts from the aggregation result
-    const {
-      pendingtvrCount = 0,
-      pendingcdrCount = 0,
-      pendingbankloginCount = 0
-    } = pendingCounts[0] || {};
-    // Count dispositions marked as NotInterested within the date range
+    // Not Interested Count
     const notInterestedCount = await dispositionmodel.countDocuments({
       is_interested: 'NotInterested',
       createdAt: { $gte: start, $lte: end }
     });
 
-    // Send the response with the aggregated data
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Counts fetched successfully',
-      loanFileCount: mtdFileCount, // Total loan file documents count within the date range
-      interestedCount, // Count of Interested loan files
-      notInterestedCount, // Count of Not Interested dispositions
-      tvrCompleted: loanFileCount.tvrCompleted,
-      tvrPending: pendingtvrCount,
-      tvrRejected: loanFileCount.tvrRejected,
+
+      // Upload
+      loanFileCount: mtdFileCount,
+
+      // Sales
+      interestedCount,
+      notInterestedCount,
+
+      // CDR
       cdrCompleted: loanFileCount.cdrCompleted,
-      cdrPending: pendingcdrCount,
+      cdrPending: loanFileCount.cdrPending,
       cdrRejected: loanFileCount.cdrRejected,
+
+      // Bank Login
       bankloginCompleted: loanFileCount.bankloginCompleted,
-      bankloginPending: pendingbankloginCount,
+      bankloginPending: loanFileCount.bankloginPending,
       bankloginRejected: loanFileCount.bankloginRejected
     });
+
   } catch (error) {
     console.error('Error fetching document counts:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to fetch document counts',
-      error: error.message,
+      error: error.message
     });
   }
 };

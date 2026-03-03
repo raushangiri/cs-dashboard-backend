@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-
+const user = require('../../model/user.model'); // Assuming your model is in the same folder
+const Chat = require('../../model/chat.model'); // Assuming your model is in the same folder
 const {
     gettvrFilesByDate,
     getLoanFilesByDate,
@@ -9,6 +10,9 @@ const {
     gettvrperformanceByFilters,
     getcdrperformanceByFilters,
     getbankloginperformanceByFilters,
+    getusers,
+    createChat,
+    createGroupChat
 //     readMessages,
 // createMessage
 } = require("./admin.controller");
@@ -21,8 +25,10 @@ router.get("/getbankloginFilesByDate",getbankloginFilesByDate );
 router.get("/gettvrperformanceByFilters",gettvrperformanceByFilters );
 router.get("/getcdrperformanceByFilters",getcdrperformanceByFilters );
 router.get("/getbankloginperformanceByFilters",getbankloginperformanceByFilters );
-// router.post('/messages', createMessage);
-// router.get('/messages', readMessages);
-
+// router.post('/users', createMessage);
+// router.get('/getusers', readMessages);
+router.get("/getusers", getusers);
+router.post("/createChat", createChat);
+router.post("/createGroupChat", createGroupChat);
 
 module.exports = router;

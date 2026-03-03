@@ -715,6 +715,69 @@ const getbankloginperformanceByFilters = async (req, res) => {
   }
 };
 
+const getusers = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const users = await user.find({
+      userId: { $ne: req.user.userId }
+    }).select("-password");
+
+    console.log("Users Found:", users.length);
+
+    res.status(200).json(users);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+const createChat =  async (req, res) => {
+  const { userId } = req.body; // The ID of the person you want to chat with
+
+  let isChat = await Chat.find({
+    isGroupChat: false,
+    $and: [
+      { users: { $elemMatch: { $eq: req.user._id } } },
+      { users: { $elemMatch: { $eq: userId } } },
+    ],
+  }).populate("users", "-password").populate("latestMessage");
+
+  if (isChat.length > 0) {
+    res.send(isChat[0]);
+  } else {
+    const chatData = {
+      chatName: "sender",
+      isGroupChat: false,
+      users: [req.user._id, userId],
+    };
+    const createdChat = await Chat.create(chatData);
+    const fullChat = await Chat.findOne({ _id: createdChat._id }).populate("users", "-password");
+    res.status(200).json(fullChat);
+  }
+};
+
+const createGroupChat = async (req, res) => {
+  const { users, name } = req.body; // Array of user IDs and group name
+  users.push(req.user._id);
+
+  const groupChat = await Chat.create({
+    chatName: name,
+    users: users,
+    isGroupChat: true,
+    groupAdmin: req.user._id,
+  });
+
+  const fullGroupChat = await Chat.findOne({ _id: groupChat._id })
+    .populate("users", "-password")
+    .populate("groupAdmin", "-password");
+
+  res.status(200).json(fullGroupChat);
+};
 
 module.exports = {
   getLoanFilesByDate,
@@ -723,5 +786,8 @@ module.exports = {
   getbankloginFilesByDate,
   gettvrperformanceByFilters,
   getcdrperformanceByFilters,
-  getbankloginperformanceByFilters
+  getbankloginperformanceByFilters,
+  getusers,
+createChat,
+createGroupChat
 }

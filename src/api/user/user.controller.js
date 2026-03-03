@@ -136,8 +136,6 @@ const getalluser = async (req, res) => {
     // Extract filters from query string
     const filters = {};
     if (req.query.status) filters.status = req.query.status;
-   
-
     // Fetch users with applied filters
     const users = await user
       .find(filters)

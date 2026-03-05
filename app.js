@@ -133,7 +133,12 @@ app.use(cors({
 
 app.use(helmet());
 
-app.use("/api/v1", router);
+  app.use("/", router);
+  app.use(
+    helmet.frameguard({
+      action: "deny",
+    })
+  );
 
 // Health Routes
 app.get("/welcome", (req, res) => {

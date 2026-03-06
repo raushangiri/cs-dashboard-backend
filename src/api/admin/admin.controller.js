@@ -5,6 +5,7 @@ const user = require('../../model/user.model'); // Assuming your model is in the
 const overview_details = require("../../model/overview.model");
 const Conversation = require("../../model/conversation.model");
 const Message = require("../../model/message.model");
+const conversationModel = require("../../model/conversation.model");
 
 // Create or Get Conversation
 const createConversation = async (req, res) => {
@@ -851,9 +852,56 @@ const getActiveUsers = async (req, res) => {
   }
 };
 
+const createGroup = async (req, res) => {
+  try {
+    const { name, members, createdBy } = req.body;
+    const group = await conversationModel.create({
+      type: "group",
+      name,
+      participants: [...members, createdBy],
+      createdBy
+    });
+    res.status(201).json(group);
+  } catch (error) {
+    res.status(500).json({ message: "Error creating group", error });
+  }
+};
 
+const addMember = async (req, res) => {
+  const { conversationId, members } = req.body;
+  const group = await conversationModel.findByIdAndUpdate(
+    conversationId,
+    { $addToSet: { members: { $each: members } } },
+    { new: true }
+  );
+  res.json(group);
 
+};
 
+const getUserConversations = async (req, res) => {
+  try {
+
+    const { userId } = req.params;
+
+    const conversations = await Conversation.find({
+      participants: { $in: [userId] }
+    })
+    .populate("participants", "name");
+
+    res.json({
+      success: true,
+      data: conversations
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      success: false,
+      message: "Error fetching conversations"
+    });
+
+  }
+};
 
 module.exports = {
   getLoanFilesByDate,
@@ -866,7 +914,9 @@ module.exports = {
   getusers,
 createConversation,
 getMessages,
-
+createGroup,
 createGroupChat,
-getActiveUsers
+getActiveUsers,
+addMember,
+getUserConversations
 }

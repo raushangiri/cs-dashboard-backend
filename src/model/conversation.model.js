@@ -6,6 +6,7 @@ const conversationSchema = new mongoose.Schema(
       type: String,
       enum: ["group", "individual"],
       required: true,
+      default: "individual"
     },
     name: {
       type: String, // For group name
@@ -16,6 +17,10 @@ const conversationSchema = new mongoose.Schema(
         ref: "user",
       },
     ],
+     createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user"
+  }
   },
   { timestamps: true }
 );

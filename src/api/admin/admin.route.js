@@ -13,11 +13,14 @@ const {
     getusers,
     createChat,
     createGroupChat,
+    addMember,
 //     readMessages,
 // createMessage
 getActiveUsers,
 createConversation,
-getMessages
+getMessages,
+createGroup,
+getUserConversations
 } = require("./admin.controller");
 const Conversation = require("../../model/conversation.model");
 
@@ -44,4 +47,7 @@ router.get("/conversations/group", async (req, res) => {
   res.json(group);
 });
 
+router.post("/conversations/createGroup", createGroup);
+router.put("/conversations/addMember", addMember);
+router.get("/conversations/user/:userId", getUserConversations);
 module.exports = router;

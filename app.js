@@ -116,7 +116,7 @@ const { connectDB } = require("./src/db/connection");
 const router = require("./src/api/route/routes");
 const Message = require("./src/model/message.model");
 
-const PORT = process.env.PORT || 3008;
+const PORT = process.env.port || 3009;
 
 const app = express();
 

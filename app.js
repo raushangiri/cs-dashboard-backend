@@ -166,6 +166,37 @@ const io = new Server(server, {
 // SOCKET LOGIC
 // ===========================
 
+// io.on("connection", (socket) => {
+//   console.log("User connected:", socket.id);
+
+//   socket.on("joinConversation", (conversationId) => {
+//     socket.join(conversationId);
+//   });
+
+//   socket.on("sendMessage", async (data) => {
+//     try {
+//       const { conversationId, senderId, text } = data;
+
+//       const message = await Message.create({
+//         conversationId,
+//         sender: senderId,
+//         text
+//       });
+
+//       const populatedMessage = await message.populate("sender", "name");
+
+//       io.to(conversationId).emit("receiveMessage", populatedMessage);
+
+//     } catch (err) {
+//       console.error("Message error:", err);
+//     }
+//   });
+
+//   socket.on("disconnect", () => {
+//     console.log("User disconnected:", socket.id);
+//   });
+// });
+
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -175,12 +206,14 @@ io.on("connection", (socket) => {
 
   socket.on("sendMessage", async (data) => {
     try {
+
       const { conversationId, senderId, text } = data;
 
       const message = await Message.create({
         conversationId,
         sender: senderId,
-        text
+        text,
+        readBy: [senderId]
       });
 
       const populatedMessage = await message.populate("sender", "name");
@@ -192,9 +225,29 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ✅ MOVE HERE
+  socket.on("markAsRead", async ({ conversationId, userId }) => {
+    try {
+
+      await Message.updateMany(
+        {
+          conversationId,
+          readBy: { $ne: userId }
+        },
+        {
+          $push: { readBy: userId }
+        }
+      );
+
+    } catch (err) {
+      console.error("Read error:", err);
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
+
 });
 
 // ===========================

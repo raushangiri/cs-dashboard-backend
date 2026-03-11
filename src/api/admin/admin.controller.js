@@ -6,7 +6,7 @@ const overview_details = require("../../model/overview.model");
 const Conversation = require("../../model/conversation.model");
 const Message = require("../../model/message.model");
 const conversationModel = require("../../model/conversation.model");
-
+const mongoose = require("mongoose");
 // Create or Get Conversation
 const createConversation = async (req, res) => {
   try {
@@ -32,6 +32,19 @@ const createConversation = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+const getUnreadCount = async (req, res) => {
+
+  const userId = req.user.id;
+
+  const count = await Message.countDocuments({
+    sender: { $ne: userId },
+    readBy: { $ne: userId }
+  });
+
+  res.json({ unreadCount: count });
+
 };
 
 
@@ -903,6 +916,102 @@ const getUserConversations = async (req, res) => {
   }
 };
 
+const getTotalUnreadCount = async (req, res) => {
+
+  const userId = req.user.id;
+
+  const count = await Message.countDocuments({
+    sender: { $ne: userId },
+    readBy: { $ne: userId }
+  });
+
+  res.json({ unreadCount: count });
+
+};
+
+
+const getUnreadCountByUser = async (req, res) => {
+  try {
+
+    const { userId } = req.params;
+
+    console.log("Getting unread count for user:", userId);
+
+    // find user using custom userId
+    const users = await user.findOne({ userId });
+
+    if (!users) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const mongoUserId = users._id;
+
+    // find all conversations where user is participant
+    const conversations = await Conversation.find({
+      participants: mongoUserId
+    }).select("_id");
+
+    const conversationIds = conversations.map(c => c._id);
+
+    // count unread messages
+    const count = await Message.countDocuments({
+      conversationId: { $in: conversationIds },
+      sender: { $ne: mongoUserId },
+      readBy: { $nin: [mongoUserId] }
+    });
+
+    res.json({
+      success: true,
+      unreadCount: count
+    });
+
+  } catch (error) {
+
+    console.error("Unread count error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error fetching unread count"
+    });
+
+  }
+};
+
+// routes/messages.js
+
+const markMessagesAsRead = async (req, res) => {
+
+  try {
+
+    const { conversationId, userId } = req.body;
+
+    await Message.updateMany(
+      {
+        conversationId,
+        readBy: { $ne: userId }
+      },
+      {
+        $addToSet: { readBy: userId }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: "Messages marked as read"
+    });
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({
+      success: false
+    });
+
+  }
+
+};
+
 module.exports = {
   getLoanFilesByDate,
   gettvrFilesByDate,
@@ -918,5 +1027,9 @@ createGroup,
 createGroupChat,
 getActiveUsers,
 addMember,
-getUserConversations
+getUserConversations,
+getUnreadCount,
+getTotalUnreadCount,
+getUnreadCountByUser,
+markMessagesAsRead
 }

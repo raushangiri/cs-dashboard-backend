@@ -20,7 +20,11 @@ getActiveUsers,
 createConversation,
 getMessages,
 createGroup,
-getUserConversations
+getUserConversations,
+getUnreadCount,
+getTotalUnreadCount,
+getUnreadCountByUser,
+markMessagesAsRead
 } = require("./admin.controller");
 const Conversation = require("../../model/conversation.model");
 
@@ -50,4 +54,9 @@ router.get("/conversations/group", async (req, res) => {
 router.post("/conversations/createGroup", createGroup);
 router.put("/conversations/addMember", addMember);
 router.get("/conversations/user/:userId", getUserConversations);
+router.get("/conversations/:conversationId/unreadCount", getUnreadCount);
+router.get("/unreadCount", getTotalUnreadCount);
+router.get("/messages/unread-count/:userId", getUnreadCountByUser);
+router.put("/messages/mark-read", markMessagesAsRead);
 module.exports = router;
+

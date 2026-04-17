@@ -6,6 +6,8 @@
 # Node artifact files
 node_modules/
 dist/
+.env
+echo "jbj-fintech-firebase-adminsdk-e6m8i-6fd0400752.json" 
 # private.key
 # public.key
 # Compiled Java class files

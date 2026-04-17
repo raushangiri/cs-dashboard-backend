@@ -2001,15 +2001,13 @@ const getLoanFilesByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
     const {
-      startDate,   // New: filter by start date (ISO format)
-      endDate,     // New: filter by end date (ISO format)
-      teamLeaderName, // New: filter by team leader's name
-      salesAgentName  // New: filter by sales agent's name
+      startDate,   
+      endDate,     
+      teamLeaderName, 
+      salesAgentName  
     } = req.query;
 
     const sanitizedUserId = typeof userId === 'string' ? userId.trim() : '';
-
-    // Find the user by userId
     const userRecord = await user.findOne({ userId: sanitizedUserId });
     if (!userRecord) {
       return res.status(404).json({
@@ -2019,20 +2017,33 @@ const getLoanFilesByUserId = async (req, res) => {
     }
 
     let query = {};
-
-    // Construct the query based on the user's role
     switch (userRecord.role) {
       case 'sales':
         query = { sales_agent_id: sanitizedUserId };
         break;
-      case 'CDR':
-        query = { cdr_agent_id: sanitizedUserId };
-        break;
+     case 'CDR':
+  query = {
+    cdr_agent_id: sanitizedUserId,
+    $or: [
+      {
+        cdr_action_date: {
+          $gte: startDate,
+          $lte:   endDate
+        }
+      },
+      {
+        cdr_assign_date: {
+          $gte:   startDate,
+          $lte: endDate
+        }
+      }
+    ]
+  };
+  break;
       case 'TVR':
         query = { tvr_agent_id: sanitizedUserId };
         break;
       case 'admin':
-        console.log("admin role detected");
         query = { sales_status: "Interested" };
         break;
       case 'Team leader':
@@ -2047,19 +2058,11 @@ const getLoanFilesByUserId = async (req, res) => {
           message: `Invalid role for userId ${sanitizedUserId}`,
         });
     }
-
-    // Apply date range filter if provided
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-
-      // Set time for startDate to beginning of the day
       start.setUTCHours(0, 0, 0, 0);
-
-      // Set time for endDate to the end of the day
       end.setUTCHours(23, 59, 59, 999);
-
-      // Apply the correct date field based on the role
       switch (userRecord.role) {
         case 'sales':
           query.sales_assign_date = { $gte: start, $lte: end };
@@ -2078,51 +2081,34 @@ const getLoanFilesByUserId = async (req, res) => {
           break;
       }
     }
-
-    // Fetch loan files based on the constructed query
     let loanFiles = await loanfilemodel.find(query);
-
-    // Apply sales agent name filter if provided
     if (salesAgentName) {
       const salesAgents = await user.find({
-        name: { $regex: salesAgentName, $options: 'i' }, // Case-insensitive match
+        name: { $regex: salesAgentName, $options: 'i' }, 
         role: 'sales'
       }, 'userId');
       const salesAgentIds = salesAgents.map(agent => agent.userId);
       loanFiles = loanFiles.filter(file => salesAgentIds.includes(file.sales_agent_id));
     }
-
-    // Fetch additional loan details and team leader name
     const filesWithLoanDetails = await Promise.all(
       loanFiles.map(async (file) => {
-        // Fetch the type of loan from personal details
         const personalDetails = await personal_details_model.findOne({
           file_number: file.file_number,
         });
-
-        // Get the sales_agent_id from loanfile
         const salesAgentId = file.sales_agent_id;
-
         let teamLeaderNameResult = 'Not Available';
         if (salesAgentId) {
-          // Find the user associated with sales_agent_id to get reportingTo
           const salesAgent = await user.findOne({ userId: salesAgentId });
-
           if (salesAgent && salesAgent.reportingTo) {
-            // Find the team leader by the reportingTo value
             const teamLeader = await user.findOne({ userId: salesAgent.reportingTo });
             if (teamLeader) {
               teamLeaderNameResult = teamLeader.name;
             }
           }
         }
-
-        // Apply team leader name filter if provided
         if (teamLeaderName && teamLeaderNameResult.toLowerCase() !== teamLeaderName.toLowerCase()) {
-          return null; // Exclude the record if team leader name doesn't match
+          return null; 
         }
-
-        // Return the loan file with additional details including team leader name
         return {
           ...file.toObject(),
           type_of_loan: personalDetails ? personalDetails.type_of_loan : 'Not Updated',
@@ -2130,18 +2116,13 @@ const getLoanFilesByUserId = async (req, res) => {
         };
       })
     );
-
-    // Filter out null values that didn't match team leader name filter
     const filteredFiles = filesWithLoanDetails.filter(file => file !== null);
-
     if (filteredFiles.length === 0) {
       return res.status(404).json({
         success: false,
         message: `No loan files found for the given filters`,
       });
     }
-
-    // Return the loan files with additional details
     return res.status(200).json({
       success: true,
       message: 'Records fetched successfully',
@@ -2156,6 +2137,156 @@ const getLoanFilesByUserId = async (req, res) => {
     });
   }
 };
+
+// const getLoanFilesByUserId = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+//     const { startDate, endDate, teamLeaderName, salesAgentName } = req.query;
+
+//     const sanitizedUserId = typeof userId === "string" ? userId.trim() : "";
+
+//     const userRecord = await user.findOne({ userId: sanitizedUserId });
+//     if (!userRecord) {
+//       return res.status(404).json({
+//         success: false,
+//         message: `User not found`,
+//       });
+//     }
+
+//     let query = {};
+//     let dateField = null;
+
+//     // ✅ ROLE BASED LOGIC
+//     const role = userRecord.role;
+
+//     if (role === "admin" || role === "Team leader") {
+//       // 🔥 SAME LOGIC FOR ADMIN + TL
+//       query = {}; // no restriction
+//       dateField = "createdAt"; // default fallback
+//     } 
+    
+    
+    
+//     else {
+//       // 🔥 AGENT BASED FILTER
+//       const roleFieldMap = {
+//         sales: "sales_agent_id",
+//         CDR: "cdr_agent_id",
+//         TVR: "tvr_agent_id",
+//         "Bank login": "banklogin_agent_id",
+//       };
+
+//       const dateFieldMap = {
+//         sales: "sales_assign_date",
+//         CDR: "cdr_action_date",
+//         TVR: "tvr_action_date",
+//         "Bank login": "banklogin_action_date",
+//       };
+
+//       const agentField = roleFieldMap[role];
+//       dateField = dateFieldMap[role];
+
+//       if (!agentField) {
+//         return res.status(400).json({
+//           success: false,
+//           message: `Invalid role`,
+//         });
+//       }
+
+//       query[agentField] = sanitizedUserId;
+//     }
+
+//     // ✅ DATE FILTER (COMMON)
+//     if (startDate && endDate && dateField) {
+//       const start = new Date(startDate);
+//       const end = new Date(endDate);
+
+//       start.setUTCHours(0, 0, 0, 0);
+//       end.setUTCHours(23, 59, 59, 999);
+
+//       query[dateField] = { $gte: start, $lte: end };
+//     }
+
+//     // ✅ SALES AGENT FILTER (DB LEVEL)
+//     if (salesAgentName) {
+//       const salesAgents = await user.find({
+//         name: { $regex: salesAgentName, $options: "i" },
+//         role: "sales",
+//       });
+
+//       const ids = salesAgents.map((a) => a.userId);
+
+//       query.sales_agent_id = { $in: ids };
+//     }
+
+//     // ✅ FETCH DATA
+//     let loanFiles = await loanfilemodel.find(query).lean();
+
+//     // ✅ ADDITIONAL DETAILS
+//     const enrichedFiles = await Promise.all(
+//       loanFiles.map(async (file) => {
+//         const personalDetails = await personal_details_model.findOne({
+//           file_number: file.file_number,
+//         });
+
+//         let teamLeaderNameResult = "Not Available";
+
+//         if (file.sales_agent_id) {
+//           const salesAgent = await user.findOne({
+//             userId: file.sales_agent_id,
+//           });
+
+//           if (salesAgent?.reportingTo) {
+//             const teamLeader = await user.findOne({
+//               userId: salesAgent.reportingTo,
+//             });
+
+//             if (teamLeader) {
+//               teamLeaderNameResult = teamLeader.name;
+//             }
+//           }
+//         }
+
+//         // ✅ TEAM LEADER FILTER (PARTIAL MATCH FIXED)
+//         if (
+//           teamLeaderName &&
+//           !teamLeaderNameResult
+//             .toLowerCase()
+//             .includes(teamLeaderName.toLowerCase())
+//         ) {
+//           return null;
+//         }
+
+//         return {
+//           ...file,
+//           type_of_loan: personalDetails?.type_of_loan || "Not Updated",
+//           teamleadername: teamLeaderNameResult,
+//         };
+//       })
+//     );
+
+//     const finalData = enrichedFiles.filter(Boolean);
+
+//     if (!finalData.length) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No records found",
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Records fetched successfully",
+//       data: finalData,
+//     });
+//   } catch (error) {
+//     console.error("Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch loan files",
+//     });
+//   }
+// };
 
 
 const admindashboardcount = async (req, res) => {

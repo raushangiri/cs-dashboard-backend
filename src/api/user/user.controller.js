@@ -131,21 +131,21 @@ const deleteUser = async (req, res) => {
 };
 
 
-const getalluser = async (req, res) => {
-  try {
-    // Extract filters from query string
-    const filters = {};
-    if (req.query.status) filters.status = req.query.status;
-    // Fetch users with applied filters
-    const users = await user
-      .find(filters)
-      .select("userId name role reportingTo department status");
+// const getalluser = async (req, res) => {
+//   try {
+//     // Extract filters from query string
+//     const filters = {};
+//     if (req.query.status) filters.status = req.query.status;
+//     // Fetch users with applied filters
+//     const users = await user
+//       .find(filters)
+//       .select("userId name role reportingTo department status");
 
-    res.status(200).json({ Data: users });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch users" });
-  }
-};
+//     res.status(200).json({ Data: users });
+//   } catch (err) {
+//     res.status(500).json({ error: "Failed to fetch users" });
+//   }
+// };
 
 
 // const login = async (req, res) => {
@@ -217,6 +217,78 @@ const getalluser = async (req, res) => {
 //     return res.status(500).send({ message: error.message, status: 500 });
 //   }
 // };
+
+const getalluser = async (req, res) => {
+  try {
+    // 🔹 Query params
+    const {
+      status,
+      search,
+      page = 1,
+      limit = 20,
+      role,
+      department,
+    } = req.query;
+
+    // 🔹 Convert to numbers
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+
+    // 🔹 Build filters
+    let filters = {};
+
+    if (status && status !== "all") {
+      filters.status = status;
+    }
+
+    if (role) {
+      filters.role = role;
+    }
+
+    if (department) {
+      filters.department = department;
+    }
+
+    // 🔹 Search (multi-field)
+    if (search) {
+      filters.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { userId: { $regex: search, $options: "i" } },
+        { role: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // 🔹 Pagination
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // 🔹 Query DB
+    const users = await user
+      .find(filters)
+      .select("userId name role reportingTo department status")
+      .skip(skip)
+      .limit(limitNumber)
+      .sort({ createdAt: -1 });
+
+    // 🔹 Total count for pagination
+    const totalUsers = await user.countDocuments(filters);
+
+    res.status(200).json({
+      success: true,
+      Data: users,
+      pagination: {
+        total: totalUsers,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(totalUsers / limitNumber),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch users",
+    });
+  }
+};
 
 const login = async (req, res) => {
   try {

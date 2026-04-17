@@ -24,11 +24,15 @@ getUserConversations,
 getUnreadCount,
 getTotalUnreadCount,
 getUnreadCountByUser,
-markMessagesAsRead
+markMessagesAsRead,
+fetchInterestedFiles,
+createOrUpdateLoan,
+getLoanByFileNumber
 } = require("./admin.controller");
 const Conversation = require("../../model/conversation.model");
 
 
+router.get("/interested-files",fetchInterestedFiles );
 router.get("/gettvrFilesByDate",gettvrFilesByDate );
 router.get("/getsalesfilehistory",getLoanFilesByDate );
 router.get("/getcdrFilesByDate",getcdrFilesByDate );
@@ -58,5 +62,7 @@ router.get("/conversations/:conversationId/unreadCount", getUnreadCount);
 router.get("/unreadCount", getTotalUnreadCount);
 router.get("/messages/unread-count/:userId", getUnreadCountByUser);
 router.put("/messages/mark-read", markMessagesAsRead);
+router.post("/loanapproval", createOrUpdateLoan);
+router.get("/getloanapproval/:file_number", getLoanByFileNumber);
 module.exports = router;
 

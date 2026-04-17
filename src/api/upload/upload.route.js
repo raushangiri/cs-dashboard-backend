@@ -42,13 +42,16 @@ const path = require('path');
 const { uploadFileToFirebase,
     uploadFile,
     deleteFileFromFirebase,
-    deleteFileFromFtp, } = require('./upload.controller');
+    deleteFileFromFtp,
+backupFirebaseFiles
+} = require('./upload.controller');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // Store file in memory for easier handling
 const { v4: uuidv4 } = require('uuid');
 
 router.post("/uploadFile", uploadFile);
 
+router.get("/backupFiles", backupFirebaseFiles);
 router.delete('/delete/ftp', async (req, res) => {
     try {
         const filePath = req.body.filePath; // File path should be sent in the request body

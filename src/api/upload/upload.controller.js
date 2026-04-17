@@ -82,6 +82,73 @@ client.ftp.timeout = 30000; // Increase timeout to 30 seconds
 const STORAGE_BUCKET = 'jbj-fintech.appspot.com';
 const API_KEY = 'AIzaSyCiTdQAQXJjX3Hoxs4mdjb4Y55q_ajXPp4';
 
+
+const BACKUP_FOLDER = path.join(__dirname, "firebase_backup");
+
+const backupFirebaseFiles = async () => {
+    try {
+
+        // create backup folder if not exists
+        if (!fs.existsSync(BACKUP_FOLDER)) {
+            fs.mkdirSync(BACKUP_FOLDER, { recursive: true });
+        }
+
+        console.log("Fetching file list from Firebase...");
+
+        const listUrl = `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o`;
+
+        const response = await axios.get(listUrl);
+
+        const files = response.data.items;
+
+        if (!files || files.length === 0) {
+            console.log("No files found in Firebase.");
+            return;
+        }
+
+        console.log(`Total files found: ${files.length}`);
+
+        for (const file of files) {
+
+            const fileName = file.name;
+            const encodedFileName = encodeURIComponent(fileName);
+
+            const downloadUrl =
+                `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${encodedFileName}?alt=media`;
+
+            const localFilePath = path.join(BACKUP_FOLDER, fileName);
+
+            console.log(`Downloading: ${fileName}`);
+
+            const writer = fs.createWriteStream(localFilePath);
+
+            const download = await axios({
+                url: downloadUrl,
+                method: "GET",
+                responseType: "stream",
+            });
+
+            download.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+                writer.on("finish", resolve);
+                writer.on("error", reject);
+            });
+
+            console.log(`Saved: ${localFilePath}`);
+        }
+
+        console.log("Firebase backup completed successfully.");
+
+    } catch (error) {
+        console.error("Backup failed:", error.message);
+    }
+}
+
+
+
+
+
 async function uploadFileToFirebase(filePath) {
     const fileName = path.basename(filePath);
     const fileStream = fs.createReadStream(filePath);
@@ -202,4 +269,5 @@ module.exports = {
   uploadFile,
   deleteFileFromFirebase,
   deleteFileFromFtp,
+  backupFirebaseFiles
 };

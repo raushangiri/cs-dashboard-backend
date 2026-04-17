@@ -7,6 +7,9 @@ const Conversation = require("../../model/conversation.model");
 const Message = require("../../model/message.model");
 const conversationModel = require("../../model/conversation.model");
 const mongoose = require("mongoose");
+const getInterestedFiles  = require("../service/fileStatusService").getInterestedFiles;
+const loan = require("../../model/loan_approval.model");
+
 // Create or Get Conversation
 const createConversation = async (req, res) => {
   try {
@@ -1012,7 +1015,75 @@ const markMessagesAsRead = async (req, res) => {
 
 };
 
+
+
+const fetchInterestedFiles = async (req, res) => {
+
+  try {
+console.log("Fetching interested files with query:");
+    const { startDate, endDate } = req.query;
+
+    const data = await getInterestedFiles(startDate, endDate);
+
+    res.json({
+      count: data.length,
+      data
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal error" });
+  }
+
+};
+
+// controllers/loanController.js
+
+const createOrUpdateLoan = async (req, res) => {
+  try {
+    const { file_number } = req.body;
+
+    const Loan = await loan.findOneAndUpdate(
+      { file_number },
+      req.body,
+      { new: true, upsert: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: Loan,
+      message: "Loan saved successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const getLoanByFileNumber = async (req, res) => {
+  try {
+    const { file_number } = req.params;
+
+    const Loan = await loan.findOne({ file_number });
+
+    if (!Loan) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: Loan,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
 module.exports = {
+  fetchInterestedFiles,
   getLoanFilesByDate,
   gettvrFilesByDate,
   getcdrFilesByDate,
@@ -1031,5 +1102,7 @@ getUserConversations,
 getUnreadCount,
 getTotalUnreadCount,
 getUnreadCountByUser,
-markMessagesAsRead
+markMessagesAsRead,
+createOrUpdateLoan,
+getLoanByFileNumber
 }

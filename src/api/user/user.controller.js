@@ -612,20 +612,65 @@ const getUserbyteamleader = async (req, res) => {
     });
   }
 };
+//create aux record when user changes aux
+// const createuseraux = async (req, res) => {
+//   try {
+//     const { userId, aux } = req.body;
+//     if (!userId || !aux) {
+//       return res.status(400).json({ error: "userId and aux are required" });
+//     }
+
+//     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+//     let dailyRecord = await userDailyAux.findOne({ userId, date: today });
+
+//     if (!dailyRecord) {
+//       // Create new daily record
+//       dailyRecord = new userDailyAux({
+//         userId,
+//         date: today,
+//         auxChanges: [
+//           { aux, startTime: new Date(), endTime: null }
+//         ],
+//       });
+//     } else {
+//       const auxChanges = dailyRecord.auxChanges;
+//       // Update previous AUX endTime if exists and last AUX is not Offline
+//       if (auxChanges.length > 0) {
+//         const lastAux = auxChanges[auxChanges.length - 1];
+//         if (lastAux.aux !== "Offline" && !lastAux.endTime) {
+//           lastAux.endTime = new Date();
+//         } 
+//       }
+//       // Only add new AUX if it's not Offline
+//       if (aux !== "Offline") {
+//         auxChanges.push({ aux, startTime: new Date(), endTime: null });
+//       }
+//     }
+
+//     await dailyRecord.save();
+
+//     res.json({ message: "AUX applied successfully", dailyRecord });
+//   } catch (error) {
+//     console.error("Error applying AUX:", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// }
 
 const createuseraux = async (req, res) => {
   try {
     const { userId, aux } = req.body;
+
     if (!userId || !aux) {
       return res.status(400).json({ error: "userId and aux are required" });
     }
 
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const today = new Date().toISOString().slice(0, 10);
 
     let dailyRecord = await userDailyAux.findOne({ userId, date: today });
 
     if (!dailyRecord) {
-      // Create new daily record
+      // ✅ Always create record with first AUX (including Offline)
       dailyRecord = new userDailyAux({
         userId,
         date: today,
@@ -635,27 +680,36 @@ const createuseraux = async (req, res) => {
       });
     } else {
       const auxChanges = dailyRecord.auxChanges;
-      // Update previous AUX endTime if exists and last AUX is not Offline
+
+      // ✅ Close previous AUX if open
       if (auxChanges.length > 0) {
         const lastAux = auxChanges[auxChanges.length - 1];
-        if (lastAux.aux !== "Offline" && !lastAux.endTime) {
+
+        if (!lastAux.endTime) {
           lastAux.endTime = new Date();
         }
       }
-      // Only add new AUX if it's not Offline
-      if (aux !== "Offline") {
-        auxChanges.push({ aux, startTime: new Date(), endTime: null });
-      }
+
+      // ✅ Always push new AUX (INCLUDING Offline)
+      auxChanges.push({
+        aux,
+        startTime: new Date(),
+        endTime: null
+      });
     }
 
     await dailyRecord.save();
 
-    res.json({ message: "AUX applied successfully", dailyRecord });
+    res.json({
+      message: "AUX applied successfully",
+      dailyRecord
+    });
+
   } catch (error) {
     console.error("Error applying AUX:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
+};
 
 const getUserDailyAux = async (req, res) => {
   try {
@@ -675,32 +729,338 @@ const getUserDailyAux = async (req, res) => {
 };
 
 
-const loggeduserlist= async (req, res) => {
-  try {
-    const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
 
-    const users = await userDailyAux.find({
-      date: today,
-      "auxChanges.aux": "Available",
-    }).select("userId date auxChanges");
+
+// const loggeduserlist = async (req, res) => {
+//   try {
+//     const today = new Date().toISOString().split("T")[0];
+
+//     const users = await userDailyAux.aggregate([
+//       {
+//         $match: { date: today }
+//       },
+
+//       // ✅ Get last AUX (current status)
+//       {
+//         $addFields: {
+//           lastAux: { $arrayElemAt: ["$auxChanges", -1] }
+//         }
+//       },
+
+//       // ❌ Exclude Offline users (current state)
+//       {
+//         $match: {
+//           "lastAux.aux": { $ne: "Offline" }
+//         }
+//       },
+
+//       // ✅ Calculate total Available time (seconds)
+//       {
+//         $addFields: {
+//           totalAvailableTime: {
+//             $sum: {
+//               $map: {
+//                 input: "$auxChanges",
+//                 as: "aux",
+//                 in: {
+//                   $cond: [
+//                     { $eq: ["$$aux.aux", "Available"] },
+//                     {
+//                       $divide: [
+//                         {
+//                           $subtract: [
+//                             { $ifNull: ["$$aux.endTime", new Date()] },
+//                             "$$aux.startTime"
+//                           ]
+//                         },
+//                         1000
+//                       ]
+//                     },
+//                     0
+//                   ]
+//                 }
+//               }
+//             }
+//           }
+//         }
+//       },
+
+//       // ✅ Convert seconds → HH:mm
+//       {
+//         $addFields: {
+//           totalAvailableTime: {
+//             $let: {
+//               vars: {
+//                 totalSeconds: "$totalAvailableTime"
+//               },
+//               in: {
+//                 $concat: [
+//                   {
+//                     $cond: [
+//                       { $lt: [{ $floor: { $divide: ["$$totalSeconds", 3600] } }, 10] },
+//                       {
+//                         $concat: [
+//                           "0",
+//                           { $toString: { $floor: { $divide: ["$$totalSeconds", 3600] } } }
+//                         ]
+//                       },
+//                       { $toString: { $floor: { $divide: ["$$totalSeconds", 3600] } } }
+//                     ]
+//                   },
+//                   ":",
+//                   {
+//                     $cond: [
+//                       {
+//                         $lt: [
+//                           {
+//                             $floor: {
+//                               $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+//                             }
+//                           },
+//                           10
+//                         ]
+//                       },
+//                       {
+//                         $concat: [
+//                           "0",
+//                           {
+//                             $toString: {
+//                               $floor: {
+//                                 $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+//                               }
+//                             }
+//                           }
+//                         ]
+//                       },
+//                       {
+//                         $toString: {
+//                           $floor: {
+//                             $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+//                           }
+//                         }
+//                       }
+//                     ]
+//                   }
+//                 ]
+//               }
+//             }
+//           }
+//         }
+//       },
+
+//       // ✅ Join user collection
+//       {
+//         $lookup: {
+//           from: "users", // ⚠️ confirm collection name
+//           localField: "userId",
+//           foreignField: "userId",
+//           as: "userDetails"
+//         }
+//       },
+
+//       {
+//         $unwind: {
+//           path: "$userDetails",
+//           preserveNullAndEmptyArrays: true
+//         }
+//       },
+
+//       // ✅ Add name but KEEP structure SAME
+//       {
+//         $addFields: {
+//           name: "$userDetails.name"
+//         }
+//       },
+
+//       // ✅ Remove extra fields but KEEP auxChanges
+//       {
+//         $project: {
+//           userDetails: 0,
+//           lastAux: 0
+//         }
+//       }
+//     ]);
+
+//     res.json({
+//       success: true,
+//       count: users.length,
+//       users
+//     });
+
+//   } catch (err) {
+//     console.error("Error fetching users:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error"
+//     });
+//   }
+// };
+
+const loggeduserlist = async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    const users = await userDailyAux.aggregate([
+      {
+        $match: { date: today }
+      },
+
+      // ✅ Get last AUX (current status)
+      {
+        $addFields: {
+          lastAux: { $arrayElemAt: ["$auxChanges", -1] }
+        }
+      },
+
+      // ❌ Exclude Offline users
+      {
+        $match: {
+          "lastAux.aux": { $ne: "Offline" }
+        }
+      },
+
+      // ✅ Calculate total Available time (seconds)
+      {
+        $addFields: {
+          totalAvailableTime: {
+            $sum: {
+              $map: {
+                input: "$auxChanges",
+                as: "aux",
+                in: {
+                  $cond: [
+                    { $eq: ["$$aux.aux", "Available"] },
+                    {
+                      $divide: [
+                        {
+                          $subtract: [
+                            { $ifNull: ["$$aux.endTime", new Date()] },
+                            "$$aux.startTime"
+                          ]
+                        },
+                        1000
+                      ]
+                    },
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+
+      // ✅ Convert seconds → HH:mm
+      {
+        $addFields: {
+          totalAvailableTime: {
+            $let: {
+              vars: {
+                totalSeconds: "$totalAvailableTime"
+              },
+              in: {
+                $concat: [
+                  {
+                    $cond: [
+                      { $lt: [{ $floor: { $divide: ["$$totalSeconds", 3600] } }, 10] },
+                      {
+                        $concat: [
+                          "0",
+                          { $toString: { $floor: { $divide: ["$$totalSeconds", 3600] } } }
+                        ]
+                      },
+                      { $toString: { $floor: { $divide: ["$$totalSeconds", 3600] } } }
+                    ]
+                  },
+                  ":",
+                  {
+                    $cond: [
+                      {
+                        $lt: [
+                          {
+                            $floor: {
+                              $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+                            }
+                          },
+                          10
+                        ]
+                      },
+                      {
+                        $concat: [
+                          "0",
+                          {
+                            $toString: {
+                              $floor: {
+                                $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        $toString: {
+                          $floor: {
+                            $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+
+      // ✅ Join user collection
+      {
+        $lookup: {
+          from: "users", // ⚠️ confirm collection name
+          localField: "userId",
+          foreignField: "userId",
+          as: "userDetails"
+        }
+      },
+
+      {
+        $unwind: {
+          path: "$userDetails",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+
+      // ✅ Add name + role (NEW)
+      {
+        $addFields: {
+          name: "$userDetails.name",
+          role: "$userDetails.role"
+        }
+      },
+
+      // ✅ Keep structure clean
+      {
+        $project: {
+          userDetails: 0,
+          lastAux: 0
+        }
+      }
+    ]);
 
     res.json({
       success: true,
       count: users.length,
-      users,
+      users
     });
+
   } catch (err) {
-    console.error("Error fetching available users:", err);
+    console.error("Error fetching users:", err);
     res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Internal server error"
     });
   }
-}
-
-
-
-
+};
 module.exports = {
   createuser1,
   login,

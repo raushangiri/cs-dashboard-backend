@@ -171,85 +171,209 @@ const gettvrFilesByDate = async (req, res) => {
   }
 };
 
+//Old function
+// const getcdrFilesByDate = async (req, res) => {
+//   console.log("Received request with query parameters:", req.query); // Log the received query parameters
+//   try {
+//     const { startDate, endDate } = req.query;
+
+//     // Check if dates are provided
+//     if (!startDate || !endDate) {
+//       return res.status(400).json({ message: 'Start date and end date are required.' });
+//     }
+
+//     // // Convert the received dates to ISO format with time included
+//     // const startOfDay = new Date(new Date(startDate).setHours(0, 0, 0, 0)); // 12:00 AM of startDate
+//     // const endOfDay = new Date(new Date(endDate).setHours(23, 59, 59, 999)); // 11:59:59 PM of endDate
+
+//     const startOfDay = new Date(`${startDate}T00:00:00.000Z`);
+// const endOfDay = new Date(`${endDate}T23:59:59.999Z`);
+
+//     // Step 1: Query loanfilemodel collection based on tvr_assign_date
+//     const loanFiles = await loanfilemodel.find({
+//       cdr_assign_date: {
+//         $gte: startOfDay, // Greater than or equal to the start of the day
+//         $lte: endOfDay,   // Less than or equal to the end of the day
+//       }
+//     });
+
+//     // Step 2: If loan files found, proceed to enrich with team leader info
+//     if (loanFiles.length > 0) {
+
+//       const enrichedLoanFiles = await Promise.all(
+//         loanFiles.map(async (loanFile) => {
+//           const loanfiledata = await personal_details_model.findOne({ file_number: loanFile.file_number });
+
+//           // If there's no tvr_agent_id, return "Pending" for agent name and proceed
+//           if (!loanFile.cdr_agent_id) {
+//             return {
+//               ...loanFile.toObject(),
+//               teamleadername: null,
+//               teamleaderuserid: null,
+//               cdr_agent_id:null,
+//               cdr_agent_name:"Pending",
+//               type_of_loan:loanfiledata.type_of_loan
+
+//             };
+//           }
+
+//           // Find the user (agent) by cdr_agent_id (which is stored as userId in UserModel)
+//           const agent = await user.findOne({ userId: loanFile.cdr_agent_id });
+
+//           // If the agent exists, find the team leader using the reportingTo field
+//           if (agent && agent.reportingTo) {
+//             const teamLeader = await user.findOne({ userId: agent.reportingTo });
+
+//             // If team leader is found, enrich the loan file with their details
+//             if (teamLeader) {
+//               return {
+//                 ...loanFile.toObject(),  // Convert Mongoose document to plain object
+//                 teamleadername: teamLeader.name,
+//                 teamleaderuserid: teamLeader.userId,
+//                 type_of_loan:loanfiledata.type_of_loan
+//               };
+//             }
+//           }
+//           // If no team leader is found, return loan file with agent's information
+//           return {
+//             ...loanFile.toObject(),
+//             teamleadername: "Pending",
+//             teamleaderuserid: null,
+//             type_of_loan:loanfiledata.type_of_loan
+//           };
+//         })
+//       );
+
+//       // Step 3: Return the enriched loan files
+//       res.status(200).json({ status: 200, data: enrichedLoanFiles });
+//     } else {
+//       res.status(404).json({ status: 404, message: 'No loan files found for the given date range.' });
+//     }
+//   } catch (error) {
+//     res.status(500).json({ status: 500, message: 'Server error', error: error.message });
+//   }
+// };
+
 
 const getcdrFilesByDate = async (req, res) => {
+  console.log("Received request with query parameters:", req.query);
+
   try {
     const { startDate, endDate } = req.query;
 
-    // Check if dates are provided
+    // ✅ Validate input
     if (!startDate || !endDate) {
-      return res.status(400).json({ message: 'Start date and end date are required.' });
+      return res.status(400).json({
+        status: 400,
+        message: "Start date and end date are required."
+      });
     }
 
-    // Convert the received dates to ISO format with time included
-    const startOfDay = new Date(new Date(startDate).setHours(0, 0, 0, 0)); // 12:00 AM of startDate
-    const endOfDay = new Date(new Date(endDate).setHours(23, 59, 59, 999)); // 11:59:59 PM of endDate
+    // ✅ Convert to proper date range (UTC safe)
+    const startOfDay = new Date(`${startDate}T00:00:00.000Z`);
+    const endOfDay = new Date(`${endDate}T23:59:59.999Z`);
 
-    // Step 1: Query loanfilemodel collection based on tvr_assign_date
+    console.log("Date Range:", startOfDay, endOfDay);
+
+    // ✅ Fetch loan files
     const loanFiles = await loanfilemodel.find({
       cdr_assign_date: {
-        $gte: startOfDay, // Greater than or equal to the start of the day
-        $lte: endOfDay,   // Less than or equal to the end of the day
+        $gte: startOfDay,
+        $lte: endOfDay,
       }
     });
 
-    // Step 2: If loan files found, proceed to enrich with team leader info
-    if (loanFiles.length > 0) {
+    console.log("Loan files found:", loanFiles.length);
 
-      const enrichedLoanFiles = await Promise.all(
-        loanFiles.map(async (loanFile) => {
-          const loanfiledata = await personal_details_model.findOne({ file_number: loanFile.file_number });
+    // ✅ If no data
+    if (!loanFiles || loanFiles.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "No loan files found for the given date range."
+      });
+    }
 
-          // If there's no tvr_agent_id, return "Pending" for agent name and proceed
-          if (!loanFile.cdr_agent_id) {
-            return {
-              ...loanFile.toObject(),
-              teamleadername: null,
-              teamleaderuserid: null,
-              cdr_agent_id:null,
-              cdr_agent_name:"Pending",
-              type_of_loan:loanfiledata.type_of_loan
+    // ✅ Process data safely
+    const enrichedLoanFiles = await Promise.all(
+      loanFiles.map(async (loanFile) => {
+        try {
+          console.log("Processing file:", loanFile.file_number);
 
-            };
-          }
+          // 🔹 Fetch personal details
+          const loanfiledata = await personal_details_model.findOne({
+            file_number: loanFile.file_number
+          });
 
-          // Find the user (agent) by cdr_agent_id (which is stored as userId in UserModel)
-          const agent = await user.findOne({ userId: loanFile.cdr_agent_id });
-
-          // If the agent exists, find the team leader using the reportingTo field
-          if (agent && agent.reportingTo) {
-            const teamLeader = await user.findOne({ userId: agent.reportingTo });
-
-            // If team leader is found, enrich the loan file with their details
-            if (teamLeader) {
-              return {
-                ...loanFile.toObject(),  // Convert Mongoose document to plain object
-                teamleadername: teamLeader.name,
-                teamleaderuserid: teamLeader.userId,
-                type_of_loan:loanfiledata.type_of_loan
-              };
-            }
-          }
-          // If no team leader is found, return loan file with agent's information
-          return {
-            ...loanFile.toObject(),
+          // 🔹 Default response structure
+          let response = {
+            ...(loanFile.toObject ? loanFile.toObject() : loanFile),
             teamleadername: "Pending",
             teamleaderuserid: null,
-            type_of_loan:loanfiledata.type_of_loan
+            cdr_agent_id: loanFile.cdr_agent_id || null,
+            cdr_agent_name: "Pending",
+            type_of_loan: loanfiledata?.type_of_loan || null
           };
-        })
-      );
 
-      // Step 3: Return the enriched loan files
-      res.status(200).json({ status: 200, data: enrichedLoanFiles });
-    } else {
-      res.status(404).json({ status: 404, message: 'No loan files found for the given date range.' });
-    }
+          // 🔹 If no agent assigned
+          if (!loanFile.cdr_agent_id) {
+            return response;
+          }
+
+          // 🔹 Fetch agent
+          const agent = await user.findOne({
+            userId: loanFile.cdr_agent_id
+          });
+
+          if (agent) {
+            response.cdr_agent_name = agent.name || "Pending";
+
+            // 🔹 Fetch team leader
+            if (agent.reportingTo) {
+              const teamLeader = await user.findOne({
+                userId: agent.reportingTo
+              });
+
+              if (teamLeader) {
+                response.teamleadername = teamLeader.name || "Pending";
+                response.teamleaderuserid = teamLeader.userId || null;
+              }
+            }
+          }
+
+          return response;
+
+        } catch (innerError) {
+          console.error("Error processing file:", loanFile.file_number, innerError);
+
+          // Return safe fallback instead of breaking entire API
+          return {
+            ...(loanFile.toObject ? loanFile.toObject() : loanFile),
+            teamleadername: "Error",
+            teamleaderuserid: null,
+            cdr_agent_name: "Error",
+            type_of_loan: null
+          };
+        }
+      })
+    );
+
+    // ✅ Success response
+    return res.status(200).json({
+      status: 200,
+      count: enrichedLoanFiles.length,
+      data: enrichedLoanFiles
+    });
+
   } catch (error) {
-    res.status(500).json({ status: 500, message: 'Server error', error: error.message });
+    console.error("API ERROR:", error); // 🔥 Full error log
+
+    return res.status(500).json({
+      status: 500,
+      message: "Server error",
+      error: error.message
+    });
   }
 };
-
 const getbankloginFilesByDate = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;

@@ -14,7 +14,9 @@ const {
   getUserbyteamleader,
    createuseraux,
     getUserDailyAux,
-    loggeduserlist
+    loggeduserlist,
+    auxReport,
+    getUnreadMessageCounts
 } = require("../user/user.controller");
 const auth = require("../../middlewares/auth");
 
@@ -31,10 +33,8 @@ router.get("/getUserbyteamleader/:userId",getUserbyteamleader);
 router.post("/createuseraux", createuseraux);
 router.get("/getUserDailyAux/:userId/:date", getUserDailyAux);
 router.get("/loggeduserlist", loggeduserlist);
+router.get("/auxReport", auxReport);
 
 
-
-
-
-
+// router.get("/messages/unread-count/:userId",getUnreadMessageCounts);
 module.exports = router;

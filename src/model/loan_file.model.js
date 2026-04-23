@@ -106,7 +106,15 @@ const loanfilesSchema = new mongoose.Schema({
         type: Date,
         default:""
     },
+    banklogin_approval_agent_id: {
+        type: String,
+        default:""
+    },
     disbursal_status: {
+        type: String,
+        default:""
+    },
+    disbursal_agent_id: {
         type: String,
         default:""
     },

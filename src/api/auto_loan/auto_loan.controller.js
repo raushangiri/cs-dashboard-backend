@@ -1210,13 +1210,6 @@ const createdesposition = async (req, res) => {
 
           
         }
-        if (file_status === 'process_to_tvr') {
-          updateData.tvr_status = 'Pending';
-          updateNeeded = true;
-          updateData.tvr_assign_date = new Date();
-                      updateData.sales_action_date = new Date();
-
-        }
         if (file_status === 'process_to_cdr') {
           updateData.cdr_status = 'Pending';
           updateNeeded = true;
@@ -1225,36 +1218,8 @@ const createdesposition = async (req, res) => {
 
         }
         break;
-      case 'TVR':
-        if (!loanFile.tvr_agent_id.trim()) {
-          updateData.tvr_agent_id = userId;
-          updateData.tvr_agent_name = userdetails.name
-          updateData.file_status = file_status;
-          updateNeeded = true;
-        } else {
-          updateData.file_status = file_status;
-          updateNeeded = true;
-        }
-        if (file_status === 'process_to_cdr') {
-          updateData.cdr_status = 'Pending';
-          updateData.cdr_assign_date = new Date();
-          updateData.tvr_status = 'Completed';
-          updateData.tvr_action_date = new Date();
-          updateNeeded = true;
-        }
-        if (file_status === 'tvr_rejected') {
-          updateData.tvr_status = 'Rejected';
-          updateData.tvr_action_date = new Date();
-
-          updateNeeded = true;
-        }
-        if (file_status === 'reassigned_to_salesagent') {
-          updateData.tvr_status = 'reassigned_to_salesagent';
-          updateData.tvr_action_date = new Date();
-          updateNeeded = true;
-        }
-        break;
-      case 'CDR':
+        case 'CDR':
+          console.log("cdr disposed")
         if (!loanFile.cdr_agent_id.trim()) {
           updateData.cdr_agent_id = userId;
           updateData.cdr_agent_name = userdetails.name
@@ -1295,12 +1260,26 @@ const createdesposition = async (req, res) => {
           updateNeeded = true;
         }
         if (file_status === 'bank_login_approved') {
-          updateData.approval_status = 'Pending';
-          updateData.approval_assign_date = new Date();
-          updateData.banklogin_action_date = new Date();
-          updateData.banklogin_status = 'Completed';
+          updateData.approval_status = 'Completed';
+          updateData.banklogin_approval_agent_id = userId;
+          updateData.approval_action_date = new Date();
+          updateData.disbursal_status = 'Pending';
+          updateData.disbursal_assign_date = new Date();
           updateNeeded = true;
         }
+        if (file_status === 'disbursal_approved') {
+          updateData.disbursal_status = 'Completed';
+          updateData.disbursal_agent_id = userId;
+          updateData.disbursal_action_date = new Date();
+          updateNeeded = true;
+        }
+        if (file_status === 'customer_ni_disbursal') {
+          updateData.disbursal_status = 'customer_ni_disbursal';
+          updateData.disbursal_agent_id = userId;
+          updateData.disbursal_action_date = new Date();
+          updateNeeded = true;
+        }
+
         if (file_status === 'bank_login_rejected') {
           updateData.banklogin_status = 'Rejected';
           updateData.banklogin_action_date = new Date();
@@ -1309,6 +1288,7 @@ const createdesposition = async (req, res) => {
           if (file_status === 'bank_login_underprocess') {
           updateData.banklogin_status = 'bank_login_underprocess';
           updateData.banklogin_action_date = new Date();
+          updateData.approval_assign_date = new Date();
           updateNeeded = true;
         }
             if (file_status === 'reassigned_to_salesagent') {
@@ -2413,6 +2393,81 @@ const admindashboardcount = async (req, res) => {
                 0
               ]
             }
+          },
+          approvalCompleted: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$approval_status', 'Completed'] },
+                    { $gte: ['$approval_assign_date', start] },
+                    { $lte: ['$approval_action_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          approvalPending: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$approval_status', 'Pending'] },
+                    { $gte: ['$approval_assign_date', start] },
+                    { $lte: ['$approval_action_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          approvalRejected: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$approval_status', 'Rejected'] },
+                    { $gte: ['$approval_assign_date', start] },
+                    { $lte: ['$approval_action_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          disbursalCompleted: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$disbursal_status', 'disbursal_approved'] },
+                    { $gte: ['$disbursal_assign_date', start] },
+                    { $lte: ['$disbursal_action_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          disbursalNI: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$disbursal_status', 'customer_ni_disbursal'] },
+                    { $gte: ['$disbursal_assign_date', start] },
+                    { $lte: ['$disbursal_action_date', end] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
           }
         }
       }
@@ -2424,7 +2479,12 @@ const admindashboardcount = async (req, res) => {
       cdrRejected: 0,
       bankloginCompleted: 0,
       bankloginPending: 0,
-      bankloginRejected: 0
+      bankloginRejected: 0,
+      approvalCompleted: 0,
+      approvalPending: 0,
+      approvalRejected: 0,
+      disbursalCompleted: 0,
+      disbursalNI: 0
     };
 
     // Interested Count (Sales Assign Date Based)
@@ -2458,7 +2518,12 @@ const admindashboardcount = async (req, res) => {
       // Bank Login
       bankloginCompleted: loanFileCount.bankloginCompleted,
       bankloginPending: loanFileCount.bankloginPending,
-      bankloginRejected: loanFileCount.bankloginRejected
+      bankloginRejected: loanFileCount.bankloginRejected,
+      approvalCompleted: loanFileCount.approvalCompleted,
+      approvalPending: loanFileCount.approvalPending,
+      approvalRejected: loanFileCount.approvalRejected,
+      disbursalCompleted: loanFileCount.disbursalCompleted,
+      disbursalNI: loanFileCount.disbursalNI
     });
 
   } catch (error) {
@@ -2729,29 +2794,33 @@ const getDocumentsCountByUserId = async (req, res) => {
       {
         $group: {
           _id: null,
-          tvrCompleted: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Completed'] }, 1, 0] } },
-          tvrPending: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Pending'] }, 1, 0] } },
-          tvrRejected: { $sum: { $cond: [{ $eq: ['$tvr_status', 'Rejected'] }, 1, 0] } },
           cdrCompleted: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Completed'] }, 1, 0] } },
           cdrPending: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Pending'] }, 1, 0] } },
           cdrRejected: { $sum: { $cond: [{ $eq: ['$cdr_status', 'Rejected'] }, 1, 0] } },
           bankloginCompleted: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Completed'] }, 1, 0] } },
-          bankloginPending: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Pending'] }, 1, 0] } },
-          bankloginRejected: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Rejected'] }, 1, 0] } }
+          bankloginPending: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'bank_login_underprocess'] }, 1, 0] } },
+          bankloginRejected: { $sum: { $cond: [{ $eq: ['$banklogin_status', 'Rejected'] }, 1, 0] } },
+          approvalCompleted: { $sum: { $cond: [{ $eq: ['$approval_status', 'Completed'] }, 1, 0] } },
+          approvalPending: { $sum: { $cond: [{ $eq: ['$approval_status', 'Pending'] }, 1, 0] } },
+          approvalRejected: { $sum: { $cond: [{ $eq: ['$approval_status', 'Rejected'] }, 1, 0] } },
+          disbursalCompleted: { $sum: { $cond: [{ $eq: ['$disbursal_status', 'disbursal_approved'] }, 1, 0] } },
+          disbursalNI: { $sum: { $cond: [{ $eq: ['$disbursal_status', 'customer_ni_disbursal'] }, 1, 0] } }
         }
       }
     ]);
 
     const statusCountData = statusCounts[0] || {
-      tvrCompleted: 0,
-      tvrPending: 0,
-      tvrRejected: 0,
       cdrCompleted: 0,
       cdrPending: 0,
       cdrRejected: 0,
       bankloginCompleted: 0,
       bankloginPending: 0,
-      bankloginRejected: 0
+      bankloginRejected: 0,
+      approvalCompleted: 0,
+      approvalPending: 0,
+      approvalRejected: 0,
+      disbursalCompleted: 0,
+      disbursalNI: 0
     };
 
     const userdata = await user.findOne({ userId: sanitizedUserId });

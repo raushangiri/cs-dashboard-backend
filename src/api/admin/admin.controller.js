@@ -452,6 +452,172 @@ const getbankloginFilesByDate = async (req, res) => {
   }
 };
 
+const getApprovalfilesbyDate = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        message: "Start date and end date are required."
+      });
+    }
+
+    const startOfDay = new Date(`${startDate}T00:00:00.000Z`);
+    const endOfDay = new Date(`${endDate}T23:59:59.999Z`);
+
+    const loanFiles = await loanfilemodel.find({
+      approval_assign_date: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
+
+    if (!loanFiles.length) {
+      return res.status(404).json({
+        status: 404,
+        message: "No approval records found"
+      });
+    }
+
+    const enrichedLoanFiles = await Promise.all(
+      loanFiles.map(async (loanFile) => {
+        const loanfiledata = await personal_details_model.findOne({
+          file_number: loanFile.file_number
+        });
+
+        let response = {
+          ...loanFile.toObject(),
+          teamleadername: "Pending",
+          teamleaderuserid: null,
+          approval_agent_id: loanFile.banklogin_approval_agent_id || null,
+          approval_agent_name: "Pending",
+          type_of_loan: loanfiledata?.type_of_loan || null
+        };
+
+        if (loanFile.banklogin_approval_agent_id) {
+          const agent = await user.findOne({
+            userId: String(loanFile.banklogin_approval_agent_id)
+          });
+
+          if (agent) {
+            response.approval_agent_name = agent.name;
+
+            if (agent.reportingTo) {
+              const tl = await user.findOne({
+                userId: String(agent.reportingTo)
+              });
+
+              if (tl) {
+                response.teamleadername = tl.name;
+                response.teamleaderuserid = tl.userId;
+              }
+            }
+          }
+        }
+
+        return response;
+      })
+    );
+
+    return res.status(200).json({
+      status: 200,
+      count: enrichedLoanFiles.length,
+      data: enrichedLoanFiles
+    });
+
+  } catch (error) {
+    console.error("Approval API Error:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
+const getdisbursalfilesbyDate = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        message: "Start date and end date are required."
+      });
+    }
+
+    const startOfDay = new Date(`${startDate}T00:00:00.000Z`);
+    const endOfDay = new Date(`${endDate}T23:59:59.999Z`);
+
+    const loanFiles = await loanfilemodel.find({
+      disbursal_assign_date: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
+
+    if (!loanFiles.length) {
+      return res.status(404).json({
+        status: 404,
+        message: "No disbursal records found"
+      });
+    }
+
+    const enrichedLoanFiles = await Promise.all(
+      loanFiles.map(async (loanFile) => {
+        const loanfiledata = await personal_details_model.findOne({
+          file_number: loanFile.file_number
+        });
+
+        let response = {
+          ...loanFile.toObject(),
+          teamleadername: "Pending",
+          teamleaderuserid: null,
+          disbursal_agent_id: loanFile.disbursal_agent_id || null,
+          disbursal_agent_name: "Pending",
+          type_of_loan: loanfiledata?.type_of_loan || null
+        };
+
+        if (loanFile.disbursal_agent_id) {
+          const agent = await user.findOne({
+            userId: String(loanFile.disbursal_agent_id)
+          });
+
+          if (agent) {
+            response.disbursal_agent_name = agent.name;
+
+            if (agent.reportingTo) {
+              const tl = await user.findOne({
+                userId: String(agent.reportingTo)
+              });
+
+              if (tl) {
+                response.teamleadername = tl.name;
+                response.teamleaderuserid = tl.userId;
+              }
+            }
+          }
+        }
+
+        return response;
+      })
+    );
+
+    return res.status(200).json({
+      status: 200,
+      count: enrichedLoanFiles.length,
+      data: enrichedLoanFiles
+    });
+
+  } catch (error) {
+    console.error("Disbursal API Error:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
+
+
 const gettvrperformanceByFilters = async (req, res) => {
   try {
     const { startDate, endDate, teamLeaderName, tvrAgentName } = req.query;
@@ -1104,6 +1270,59 @@ const getUnreadCountByUser = async (req, res) => {
   }
 };
 
+const getUnreadCountByConversation = async (req, res) => {
+  try {
+
+    const { userId } = req.params;
+
+    // find user
+    const users = await user.findOne({ userId });
+
+    if (!users) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const mongoUserId = users._id;
+
+    // aggregate unread count per conversation
+    const unreadCounts = await Message.aggregate([
+      {
+        $match: {
+          sender: { $ne: mongoUserId },
+          readBy: { $nin: [mongoUserId] }
+        }
+      },
+      {
+        $group: {
+          _id: "$conversationId",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          conversationId: "$_id",
+          count: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: unreadCounts
+    });
+
+  } catch (error) {
+
+    console.error("Unread per conversation error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error fetching unread count"
+    });
+
+  }
+};
 // routes/messages.js
 
 const markMessagesAsRead = async (req, res) => {
@@ -1228,5 +1447,8 @@ getTotalUnreadCount,
 getUnreadCountByUser,
 markMessagesAsRead,
 createOrUpdateLoan,
-getLoanByFileNumber
+getLoanByFileNumber,
+getApprovalfilesbyDate,
+getUnreadCountByConversation,
+getdisbursalfilesbyDate
 }

@@ -10,6 +10,7 @@ const user = require("../../model/user.model");
 // const adminusers = require("../../model/admin_users.model");
 // const managementRole = require("../../model/management_role.model");
 // const companyData1 = require("../../model/company_data.model");
+const formatTime = require("./user.service").formatTime
 
 const sendEmail = require("./user.service");
 const {
@@ -1061,7 +1062,199 @@ const loggeduserlist = async (req, res) => {
     });
   }
 };
-module.exports = {
+
+const auxReport = async (req, res) => {
+  try {
+    let { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "startDate and endDate required",
+      });
+    }
+
+    const toYMD = (d) => new Date(d).toISOString().split("T")[0];
+
+    const startYMD = toYMD(startDate);
+    const endYMD = toYMD(endDate);
+
+    // 🔥 create date array
+    const dates = [];
+    let current = new Date(startYMD);
+
+    while (current <= new Date(endYMD)) {
+      dates.push(current.toISOString().split("T")[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    const data = await userDailyAux.aggregate([
+      {
+        $match: {
+          date: { $in: dates }
+        }
+      },
+
+      {
+        $addFields: {
+          endOfDay: {
+            $toDate: { $concat: ["$date", "T23:59:59.999Z"] }
+          }
+        }
+      },
+
+      { $unwind: "$auxChanges" },
+
+      // 🔥 duration per record
+      {
+        $addFields: {
+          duration: {
+            $divide: [
+              {
+                $subtract: [
+                  { $ifNull: ["$auxChanges.endTime", "$endOfDay"] },
+                  "$auxChanges.startTime"
+                ]
+              },
+              1000
+            ]
+          }
+        }
+      },
+
+      // 🔥 GROUP BY USER + DATE (IMPORTANT FIX)
+      {
+        $group: {
+          _id: {
+            userId: "$userId",
+            date: "$date"
+          },
+
+          Meeting: {
+            $sum: { $cond: [{ $eq: ["$auxChanges.aux", "Meeting"] }, "$duration", 0] }
+          },
+          Break: {
+            $sum: { $cond: [{ $eq: ["$auxChanges.aux", "Break"] }, "$duration", 0] }
+          },
+          Available: {
+            $sum: { $cond: [{ $eq: ["$auxChanges.aux", "Available"] }, "$duration", 0] }
+          },
+          Training: {
+            $sum: { $cond: [{ $eq: ["$auxChanges.aux", "Training"] }, "$duration", 0] }
+          },
+          Offline: {
+            $sum: { $cond: [{ $eq: ["$auxChanges.aux", "Offline"] }, "$duration", 0] }
+          },
+
+          totalLoginTime: { $sum: "$duration" }
+        }
+      },
+
+      // 🔥 JOIN USER
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id.userId",
+          foreignField: "userId",
+          as: "userDetails"
+        }
+      },
+
+      { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+
+      // 🔥 FINAL FORMAT
+      {
+        $addFields: {
+          date: "$_id.date",
+          userId: "$_id.userId",
+          name: "$userDetails.name",
+          role: "$userDetails.role",
+
+          LoginTime: formatTime("$totalLoginTime"),
+          Available: formatTime("$Available"),
+          Break: formatTime("$Break"),
+          Meeting: formatTime("$Meeting"),
+          Training: formatTime("$Training"),
+          Offline: formatTime("$Offline")
+        }
+      },
+
+      {
+  $project: {
+    _id: 0,
+    date: 1,   // ✅ ADD THIS
+    userId: 1,
+    name: 1,
+    role: 1,
+    LoginTime: 1,
+    Available: 1,
+    Break: 1,
+    Meeting: 1,
+    Training: 1,
+    Offline: 1
+  }
+},
+
+      {
+        $sort: { date: 1, userId: 1 }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      count: data.length,
+      data
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+const getUnreadMessageCounts = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const unreadCounts = await Message.aggregate([
+      {
+        $match: {
+          readBy: { $ne: userId }
+        }
+      },
+      {
+        $group: {
+          _id: "$conversationId",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          conversationId: "$_id",
+          count: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: unreadCounts
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+
+
+
+module.exports = { 
   createuser1,
   login,
   changePassword,
@@ -1074,5 +1267,7 @@ module.exports = {
   getUserbyteamleader,
   createuseraux,
   getUserDailyAux,
-  loggeduserlist
+  loggeduserlist,
+  auxReport,
+  getUnreadMessageCounts
 };

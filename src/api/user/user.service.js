@@ -61,7 +61,73 @@ const matches = (obj1, obj2) => {
 //     text,
 //   });
 // };
+
+const formatTime = (field) => ({
+  $let: {
+    vars: { totalSeconds: field },
+    in: {
+      $concat: [
+        {
+          $cond: [
+            { $lt: [{ $floor: { $divide: ["$$totalSeconds", 3600] } }, 10] },
+            {
+              $concat: [
+                "0",
+                {
+                  $toString: {
+                    $floor: { $divide: ["$$totalSeconds", 3600] }
+                  }
+                }
+              ]
+            },
+            {
+              $toString: {
+                $floor: { $divide: ["$$totalSeconds", 3600] }
+              }
+            }
+          ]
+        },
+        ":",
+        {
+          $cond: [
+            {
+              $lt: [
+                {
+                  $floor: {
+                    $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+                  }
+                },
+                10
+              ]
+            },
+            {
+              $concat: [
+                "0",
+                {
+                  $toString: {
+                    $floor: {
+                      $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              $toString: {
+                $floor: {
+                  $divide: [{ $mod: ["$$totalSeconds", 3600] }, 60]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+});
+
 module.exports = {
   createUser,
   matches,
+  formatTime
 };

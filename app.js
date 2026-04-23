@@ -197,6 +197,9 @@ const io = new Server(server, {
 //   });
 // });
 
+
+
+//////////function till 23-04-2026
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -225,6 +228,18 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("newMessageNotification", ({ message }) => {
+
+  const convoId = String(message.conversationId);
+
+  if (convoId !== String(conversationId)) {
+    setUnreadCounts(prev => ({
+      ...prev,
+      [convoId]: (prev[convoId] || 0) + 1
+    }));
+  }
+
+});
   // ✅ MOVE HERE
   socket.on("markAsRead", async ({ conversationId, userId }) => {
     try {
@@ -249,6 +264,7 @@ io.on("connection", (socket) => {
   });
 
 });
+
 
 // ===========================
 // CONNECT DB + START SERVER

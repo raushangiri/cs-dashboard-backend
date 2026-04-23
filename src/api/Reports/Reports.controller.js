@@ -2,7 +2,7 @@ const auto_loan_file = require("../../model/auto_loan_file.model");
 const personal_details_model = require('../../model/personaldetails.model');  // Your model
 const loanfilemodel = require('../../model/loan_file.model'); // Assuming your model is in the same folder
 const user = require('../../model/user.model'); // Assuming your model is in the same folder
-
+const dispositions = require('../../model/desposition.model'); // Assuming your model is in the same folder
 
 const typeofloanreport= async (req, res) => {
     try {
@@ -95,6 +95,82 @@ const getTeamLeadersAndReporters = async (req, res) => {
   } catch (error) {
     console.error('Error fetching team leaders and reporters:', error);
     return res.status(500).json({ error: 'Server error while fetching data' });
+  }
+};
+
+const dispositionReport = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    // ✅ Validation
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Start date and end date are required",
+      });
+    }
+
+    // ✅ Date range (full day)
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    const end = new Date(`${endDate}T23:59:59.999Z`);
+
+    // ✅ Fetch dispositions
+    const records = await dispositions.find({
+      createdAt: {
+        $gte: start,
+        $lte: end,
+      },
+    }).select(`
+      file_number
+      userId
+      username
+      role
+      call_status
+      is_interested
+      disposition
+      not_interested_reason
+      remarks
+      file_status
+      createdAt
+    `);
+
+    // ✅ Format response
+    const result = records.map((item) => {
+      const dateObj = new Date(item.createdAt);
+
+      return {
+        file_number: item.file_number,
+        userId: item.userId,
+        username: item.username,
+        role: item.role,
+        call_status: item.call_status,
+        is_interested: item.is_interested,
+        disposition: item.disposition,
+        not_interested_reason: item.not_interested_reason,
+        remarks: item.remarks,
+        file_status: item.file_status,
+
+        // formatted date + time
+        date: dateObj.toLocaleDateString("en-GB"),
+        time: dateObj.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: result.length,
+      data: result,
+    });
+
+  } catch (error) {
+    console.error("Disposition Report Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -304,5 +380,6 @@ module.exports = {
     getTeamLeadersAndReporters,
     tvrreport,
     cdrreport,
-    loginreport
+    loginreport,
+    dispositionReport
 }

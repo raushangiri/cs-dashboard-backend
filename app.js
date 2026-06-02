@@ -201,7 +201,7 @@ const io = new Server(server, {
 
 //////////function till 23-04-2026
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+  // console.log("User connected:", socket.id);
 
   socket.on("joinConversation", (conversationId) => {
     socket.join(conversationId);

@@ -9,7 +9,7 @@ const conversationModel = require("../../model/conversation.model");
 const mongoose = require("mongoose");
 const getInterestedFiles  = require("../service/fileStatusService").getInterestedFiles;
 const loan = require("../../model/loan_approval.model");
-
+const loanDisbursal = require("../../model/loan_disbursal.model");
 // Create or Get Conversation
 const createConversation = async (req, res) => {
   try {
@@ -123,7 +123,7 @@ const gettvrFilesByDate = async (req, res) => {
           const loanfiledata = await personal_details_model.findOne({ file_number: loanFile.file_number });
           const overview_detail = await overview_details.findOne({ file_number: loanFile.file_number });
 
-          console.log(loanfiledata.type_of_loan,"type_of_loan")
+          // console.log(loanfiledata.type_of_loan,"type_of_loan")
           if (!loanFile.tvr_agent_id) {
             return {
               ...loanFile.toObject(),
@@ -256,7 +256,7 @@ const gettvrFilesByDate = async (req, res) => {
 
 
 const getcdrFilesByDate = async (req, res) => {
-  console.log("Received request with query parameters:", req.query);
+  // console.log("Received request with query parameters:", req.query);
 
   try {
     const { startDate, endDate } = req.query;
@@ -273,7 +273,7 @@ const getcdrFilesByDate = async (req, res) => {
     const startOfDay = new Date(`${startDate}T00:00:00.000Z`);
     const endOfDay = new Date(`${endDate}T23:59:59.999Z`);
 
-    console.log("Date Range:", startOfDay, endOfDay);
+    // console.log("Date Range:", startOfDay, endOfDay);
 
     // ✅ Fetch loan files
     const loanFiles = await loanfilemodel.find({
@@ -283,7 +283,7 @@ const getcdrFilesByDate = async (req, res) => {
       }
     });
 
-    console.log("Loan files found:", loanFiles.length);
+    // console.log("Loan files found:", loanFiles.length);
 
     // ✅ If no data
     if (!loanFiles || loanFiles.length === 0) {
@@ -297,7 +297,7 @@ const getcdrFilesByDate = async (req, res) => {
     const enrichedLoanFiles = await Promise.all(
       loanFiles.map(async (loanFile) => {
         try {
-          console.log("Processing file:", loanFile.file_number);
+          // console.log("Processing file:", loanFile.file_number);
 
           // 🔹 Fetch personal details
           const loanfiledata = await personal_details_model.findOne({
@@ -1363,7 +1363,7 @@ const markMessagesAsRead = async (req, res) => {
 const fetchInterestedFiles = async (req, res) => {
 
   try {
-console.log("Fetching interested files with query:");
+// console.log("Fetching interested files with query:");
     const { startDate, endDate } = req.query;
 
     const data = await getInterestedFiles(startDate, endDate);
@@ -1402,6 +1402,29 @@ const createOrUpdateLoan = async (req, res) => {
   }
 };
 
+
+const createOrUpdatedisbursal = async (req, res) => {
+  try {
+    const { file_number } = req.body;
+
+    const Loan = await loanDisbursal.findOneAndUpdate(
+      { file_number },
+      req.body,
+      { new: true, upsert: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: Loan,
+      message: "Disbursal details saved successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+
 const getLoanByFileNumber = async (req, res) => {
   try {
     const { file_number } = req.params;
@@ -1424,6 +1447,27 @@ const getLoanByFileNumber = async (req, res) => {
   }
 };
 
+const getLoandisbursalByFileNumber = async (req, res) => {
+  try {
+    const { file_number } = req.params;
+
+    const Loan = await loan.findOne({ file_number });
+
+    if (!Loan) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: Loan,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 
 module.exports = {
   fetchInterestedFiles,
@@ -1450,5 +1494,7 @@ createOrUpdateLoan,
 getLoanByFileNumber,
 getApprovalfilesbyDate,
 getUnreadCountByConversation,
-getdisbursalfilesbyDate
+getdisbursalfilesbyDate,
+createOrUpdatedisbursal,
+getLoandisbursalByFileNumber
 }

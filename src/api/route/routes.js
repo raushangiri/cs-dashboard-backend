@@ -8,6 +8,7 @@ const reportroute = require("../Reports/report.route");
 // const upload = require('../../middlewares/upload');
 const uploadFile = require('../upload/upload.route');
 const adminRoute = require('../admin/admin.route');
+const callbackroute = require('../scheduledcallback/scheduledcallback.route');
 
 router.use("/api/v1", auto_loanRoute);
 router.use("/api/v1", userRoute);
@@ -15,5 +16,5 @@ router.use("/api/v1", bankroute);
 router.use("/api/v1", reportroute);
 router.use("/api/v1", uploadFile);
 router.use("/api/v1", adminRoute);
-
+router.use("/api/v1", callbackroute);
 module.exports = router;

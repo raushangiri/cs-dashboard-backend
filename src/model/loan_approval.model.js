@@ -24,6 +24,7 @@ const loanApprovalSchema = new mongoose.Schema(
     docCharges: Number,
     stampDuty: Number,
     emiAmount: Number,
+    cashback: Number,
     tenure: Number,
     deductFc: Number,
     rto: Number,

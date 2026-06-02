@@ -519,57 +519,104 @@ const getUserById = async (req, res) => {
   }
 };
 
-const updateUser = async (req, res) => {
-  console.log("Update API called");
-  try {
-    const { userId, role, name, department, reportingTo } = req.body;
 
-    // Check if the userId is provided
+const updateUser = async (req, res) => {
+  try {
+    const {
+      userId,
+      role,
+      name,
+      department,
+      reportingTo,
+      status,
+    } = req.body;
+
+    // Check if userId is provided
     if (!userId) {
-      return res.status(400).json({ message: "User ID is required", status: 400 });
+      return res.status(400).json({
+        message: "User ID is required",
+        status: 400,
+      });
     }
 
-    // Find if the user exists
-    const existingUser = await user.findOne({ userId: userId.toString() });
+    // Check if user exists
+    const existingUser = await user.findOne({
+      userId: userId.toString(),
+    });
+
     if (!existingUser) {
-      return res.status(404).json({ message: "User not found", status: 404 });
+      return res.status(404).json({
+        message: "User not found",
+        status: 404,
+      });
     }
 
     // Validate required fields
     if (!role || !name) {
-      return res.status(400).json({ message: "Role and name are required", status: 400 });
+      return res.status(400).json({
+        message: "Role and name are required",
+        status: 400,
+      });
     }
 
-    if (role === 'Team leader' && !department) {
-      return res.status(400).json({ message: "Department is required for team leaders", status: 400 });
+    // Team Leader validation
+    if (role === "Team leader" && !department) {
+      return res.status(400).json({
+        message: "Department is required for Team Leader",
+        status: 400,
+      });
     }
 
-    if (role !== 'admin' && role !== 'Team leader') {
+    // Other roles validation
+    if (role !== "admin" && role !== "Team leader") {
       if (!department || !reportingTo) {
-        return res.status(400).json({ message: "Department and reportingTo are required for roles other than admin and team leader", status: 400 });
+        return res.status(400).json({
+          message:
+            "Department and reportingTo are required for roles other than admin and Team Leader",
+          status: 400,
+        });
       }
     }
 
-    // Prepare update data without userId
+    // Prepare update data
     const updateData = {
       role,
       name,
     };
 
-    // Handle department and reportingTo
-    if (role === 'Team leader' || role !== 'admin') {
-      updateData.department = Array.isArray(department) ? department : [department];
+    // Update status if provided
+    if (status !== undefined) {
+      updateData.status = status;
     }
 
-    if (role !== 'admin' && role !== 'Team leader') {
+    // Department handling
+    if (role !== "admin") {
+      updateData.department = Array.isArray(department)
+        ? department
+        : [department];
+    }
+
+    // Reporting manager handling
+    if (role !== "admin" && role !== "Team leader") {
       updateData.reportingTo = reportingTo;
+    } else {
+      updateData.reportingTo = null;
     }
 
-    // Perform the update operation, without modifying userId
-    const updatedUser = await user.findOneAndUpdate({ userId: userId.toString() }, updateData, { new: true });
+    // console.log("Update Data:", updateData);
+
+    // Update user
+    const updatedUser = await user.findOneAndUpdate(
+      { userId: userId.toString() },
+      { $set: updateData },
+      { new: true }
+    );
 
     if (!updatedUser) {
-      return res.status(500).json({ message: "User update failed", status: 500 });
+      return res.status(500).json({
+        message: "User update failed",
+        status: 500,
+      });
     }
 
     return res.status(200).json({
@@ -578,6 +625,7 @@ const updateUser = async (req, res) => {
         UserId: updatedUser.userId,
         Name: updatedUser.name,
         Role: updatedUser.role,
+        Status: updatedUser.status,
         Department: updatedUser.department,
         ReportingTo: updatedUser.reportingTo,
       },
@@ -585,9 +633,83 @@ const updateUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating user:", error);
-    return res.status(500).json({ message: error.message, status: 500 });
+
+    return res.status(500).json({
+      message: error.message,
+      status: 500,
+    });
   }
 };
+
+// const updateUser = async (req, res) => {
+//   // console.log("Update API called");
+//   try {
+//     const { userId, role, name, department, reportingTo } = req.body;
+
+//     // Check if the userId is provided
+//     if (!userId) {
+//       return res.status(400).json({ message: "User ID is required", status: 400 });
+//     }
+
+//     // Find if the user exists
+//     const existingUser = await user.findOne({ userId: userId.toString() });
+//     if (!existingUser) {
+//       return res.status(404).json({ message: "User not found", status: 404 });
+//     }
+
+//     // Validate required fields
+//     if (!role || !name) {
+//       return res.status(400).json({ message: "Role and name are required", status: 400 });
+//     }
+
+//     if (role === 'Team leader' && !department) {
+//       return res.status(400).json({ message: "Department is required for team leaders", status: 400 });
+//     }
+
+//     if (role !== 'admin' && role !== 'Team leader') {
+//       if (!department || !reportingTo) {
+//         return res.status(400).json({ message: "Department and reportingTo are required for roles other than admin and team leader", status: 400 });
+//       }
+//     }
+
+//     // Prepare update data without userId
+//     const updateData = {
+//       role,
+//       name,
+//     };
+
+//     // Handle department and reportingTo
+//     if (role === 'Team leader' || role !== 'admin') {
+//       updateData.department = Array.isArray(department) ? department : [department];
+//     }
+
+//     if (role !== 'admin' && role !== 'Team leader') {
+//       updateData.reportingTo = reportingTo;
+//     }
+
+//     // Perform the update operation, without modifying userId
+//     const updatedUser = await user.findOneAndUpdate({ userId: userId.toString() }, updateData, { new: true });
+
+//     if (!updatedUser) {
+//       return res.status(500).json({ message: "User update failed", status: 500 });
+//     }
+
+//     return res.status(200).json({
+//       message: "User updated successfully",
+//       Data: {
+//         UserId: updatedUser.userId,
+//         Name: updatedUser.name,
+//         Role: updatedUser.role,
+//         Department: updatedUser.department,
+//         ReportingTo: updatedUser.reportingTo,
+//       },
+//       status: 200,
+//     });
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     return res.status(500).json({ message: error.message, status: 500 });
+//   }
+// };
 
 const getUserbyteamleader = async (req, res) => {
   try {
@@ -1269,5 +1391,5 @@ module.exports = {
   getUserDailyAux,
   loggeduserlist,
   auxReport,
-  getUnreadMessageCounts
+  // getUnreadMessageCounts
 };

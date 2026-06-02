@@ -32,6 +32,11 @@ const userschema = new mongoose.Schema(
     passwordChangedAt: { 
       type: Date, 
       default: null 
+    },
+    status:{
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
     }
   },
   {

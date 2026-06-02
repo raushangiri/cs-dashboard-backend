@@ -353,7 +353,7 @@ const generateFileNumber = async () => {
 };
 
 const uploadData = async (req, res) => {
-  console.log("api called")
+  // console.log("api called")
   try {
     const data = req.body;
 
@@ -1219,7 +1219,7 @@ const createdesposition = async (req, res) => {
         }
         break;
         case 'CDR':
-          console.log("cdr disposed")
+          // console.log("cdr disposed")
         if (!loanFile.cdr_agent_id.trim()) {
           updateData.cdr_agent_id = userId;
           updateData.cdr_agent_name = userdetails.name
@@ -2960,7 +2960,7 @@ const getTvrDocumentsCountByUserId = async (req, res) => {
       tvr_agent_id: sanitizedUserId,
       ...dateFilter // Apply date filter here
     });
-    console.log(sanitizedUserId, "sanitizedUserId")
+    // console.log(sanitizedUserId, "sanitizedUserId")
 
     // Count of Completed loan files
     const tvrCount = await loanfilemodel.countDocuments({
